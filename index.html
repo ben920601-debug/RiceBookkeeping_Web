@@ -60,9 +60,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 🚀 1. 填入你原有的網頁端 Firebase Config
+        // 🚀 1. 填入你的網頁端 Firebase Config
         const firebaseConfig = {
           apiKey: "AIzaSyCqTPnsxv_hOJkR0BnsKjQWgLvlQ3GR9E0",
           authDomain: "ricemoney-db.firebaseapp.com",
@@ -76,28 +76,23 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 🚀 2. 填入你在 LINE Developers 申請到的 LIFF ID
+        // 🚀 2. 填入你的 LINE LIFF ID
         const MY_LIFF_ID = "2010446205-W1G1WDQQ"; 
 
         let myChart = null;
+        let globalUserId = null;
 
-        // 🚀 3. 自動身份安全對接機制
+        // 初始化安全通道
         async function initLIFF() {
             try {
                 await liff.init({ liffId: MY_LIFF_ID });
-                
-                // 如果沒登入，強制跳轉 LINE 授權登入
                 if (!liff.isLoggedIn()) {
-                    document.getElementById("gateway-status").innerText = "🔑 正在引導至 LINE 安全登入...";
                     liff.login();
                     return;
                 }
-
-                // 成功登入，獲取真實的使用者 Profile
                 const profile = await liff.getProfile();
-                const currentUserId = profile.userId; // 🎯 拿到使用者獨一無二的 LINE UID
+                globalUserId = profile.userId; 
 
-                // 渲染 UI 上的個人資訊
                 document.getElementById("nav-title").innerText = `${profile.displayName} ｜ 雲端帳本`;
                 if (profile.pictureUrl) {
                     const avatar = document.getElementById("user-avatar");
@@ -105,26 +100,23 @@
                     avatar.classList.remove("hidden");
                 }
 
-                // 關閉遮罩，解鎖網頁
                 const gateway = document.getElementById("login-gateway");
                 gateway.classList.add("opacity-0");
                 setTimeout(() => gateway.remove(), 300);
 
-                // 🚀 根據使用者的專屬 UID 去 Firebase 隔離拉取資料
-                loadDashboardData(currentUserId);
-
+                loadDashboardData(globalUserId);
             } catch (error) {
                 console.error("LIFF 初始化失敗:", error);
                 document.getElementById("gateway-status").innerText = "❌ LINE 安全對接失敗，請在 LINE 內打開此網頁。";
             }
         }
 
+        // 讀取資料與渲染
         async function loadDashboardData(userId) {
             try {
                 const now = new Date();
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-                // 🎯 這裡實現完全隔離：只撈取此 UID 底下的記帳紀錄
                 const expensesRef = collection(db, "users", userId, "expenses");
                 const q = query(expensesRef, where("timestamp", ">=", startOfMonth), orderBy("timestamp", "desc"));
                 const querySnapshot = await getDocs(q);
@@ -138,11 +130,14 @@
 
                 if (querySnapshot.empty) {
                     document.getElementById("history-list").innerHTML = `<div class="text-center py-8 text-white/30 text-xs tracking-wider">本月帳本尚無任何數據。</div>`;
+                    renderChart({});
+                    updateTotals(0, 0, 0);
                     return;
                 }
 
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data(); 
+                querySnapshot.forEach((res) => {
+                    const id = res.id; // 🎯 拿到 Firestore 的每筆文件 ID
+                    const data = res.data(); 
                     const amt = data.amount || 0;
                     const type = data.type || "expense";
                     const item = data.item || "未命名";
@@ -151,48 +146,37 @@
                     const dateObj = data.timestamp ? data.timestamp.toDate() : new Date();
                     const dateStr = `${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
 
-                    if (type === "income") {
-                        incomeTotal += amt;
-                        listHtml += `
-                            <div class="flex justify-between items-center pt-4 text-sm first:pt-0">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-full bg-white text-[#0A1128] font-bold text-[11px] flex items-center justify-center">入</div>
-                                    <div class="flex flex-col">
-                                        <span class="font-medium text-white tracking-wide">${item}</span>
-                                        <span class="text-[10px] text-white/40 mt-0.5">${cat}</span>
-                                    </div>
+                    const isIncome = type === "income";
+                    if (isIncome) incomeTotal += amt;
+                    else { expenseTotal += amt; categoryData[cat] = (categoryData[cat] || 0) + amt; }
+
+                    // 🛠️ 在明細右側植入「修正」與「刪除」按鈕，並綁定 documentId (id)
+                    listHtml += `
+                        <div class="flex justify-between items-center pt-4 text-sm first:pt-0 group">
+                            <div class="flex items-center gap-3">
+                                <div class="w-7 h-7 rounded-full ${isIncome ? 'bg-white text-[#0A1128] font-bold' : 'bg-white/10 text-white/80 border border-white/5'} text-[11px] flex items-center justify-center">
+                                    ${isIncome ? '入' : '支'}
                                 </div>
+                                <div class="flex flex-col">
+                                    <span class="font-medium ${isIncome ? 'text-white' : 'text-white/90'} tracking-wide">${item}</span>
+                                    <span class="text-[10px] text-white/40 mt-0.5">${cat}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4">
                                 <div class="text-right">
-                                    <span class="font-bold text-white font-mono">+ $${amt.toLocaleString()}</span>
+                                    <span class="font-bold font-mono ${isIncome ? 'text-white' : 'text-white/60'}">${isIncome ? '+' : '-'} $${amt.toLocaleString()}</span>
                                     <span class="text-white/30 block text-[9px] mt-0.5">${dateStr}</span>
                                 </div>
-                            </div>`;
-                    } else {
-                        expenseTotal += amt; 
-                        categoryData[cat] = (categoryData[cat] || 0) + amt;
-                        listHtml += `
-                            <div class="flex justify-between items-center pt-4 text-sm first:pt-0">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-full bg-white/10 text-white/80 font-medium text-[11px] flex items-center justify-center border border-white/5">支</div>
-                                    <div class="flex flex-col">
-                                        <span class="font-medium text-white/90 tracking-wide">${item}</span>
-                                        <span class="text-[10px] text-white/40 mt-0.5">${cat}</span>
-                                    </div>
+                                <div class="flex items-center gap-1.5 pl-2 border-l border-white/5">
+                                    <button onclick="editRecord('${id}', '${item}', ${amt})" class="w-8 h-8 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition flex items-center justify-center text-xs">✎</button>
+                                    <button onclick="deleteRecord('${id}', '${item}')" class="w-8 h-8 rounded-lg text-rose-400/40 hover:text-rose-400 hover:bg-rose-500/10 transition flex items-center justify-center text-xs">🗑️</button>
                                 </div>
-                                <div class="text-right">
-                                    <span class="font-medium text-white/60 font-mono">- $${amt.toLocaleString()}</span>
-                                    <span class="text-white/30 block text-[9px] mt-0.5">${dateStr}</span>
-                                </div>
-                            </div>`;
-                    }
+                            </div>
+                        </div>`;
                 });
 
-                document.getElementById("total-income").innerText = `+$${incomeTotal.toLocaleString()}`;
-                document.getElementById("total-expense").innerText = `-$${expenseTotal.toLocaleString()}`;
-                const net = incomeTotal - expenseTotal;
-                document.getElementById("net-balance").innerText = `${net >= 0 ? '' : '-'}$$${Math.abs(net).toLocaleString()}`;
+                updateTotals(incomeTotal, expenseTotal, incomeTotal - expenseTotal);
                 document.getElementById("history-list").innerHTML = listHtml;
-
                 renderChart(categoryData);
 
             } catch (error) {
@@ -201,20 +185,68 @@
             }
         }
 
+        function updateTotals(income, expense, net) {
+            document.getElementById("total-income").innerText = `+$${income.toLocaleString()}`;
+            document.getElementById("total-expense").innerText = `-$${expense.toLocaleString()}`;
+            document.getElementById("net-balance").innerText = `${net >= 0 ? '' : '-'}$$${Math.abs(net).toLocaleString()}`;
+        }
+
+        // 🚀 【修正邏輯】彈出原生 Prompt 進行資料修改
+        window.editRecord = async function(docId, currentItem, currentAmount) {
+            const newItem = prompt("請輸入修正後的【項目名稱】:", currentItem);
+            if (newItem === null) return; // 取消
+            
+            const newAmountStr = prompt("請輸入修正後的【金額】:", currentAmount);
+            if (newAmountStr === null) return; // 取消
+            
+            const newAmount = parseInt(newAmountStr, 10);
+            if (isNaN(newAmount) || newAmount <= 0) {
+                alert("❌ 請輸入有效的正整數金額！");
+                return;
+            }
+
+            if (confirm(`確定要將其修正為：\n📦 項目：${newItem}\n💰 金額：$${newAmount} 嗎？`)) {
+                try {
+                    const docRef = doc(db, "users", globalUserId, "expenses", docId);
+                    await updateDoc(docRef, {
+                        item: newItem.strip ? newItem.strip() : newItem,
+                        amount: newAmount
+                    });
+                    // 重新載入，完美刷新
+                    loadDashboardData(globalUserId);
+                } catch (e) {
+                    alert("❌ 修正失敗，請檢查網路或權限。");
+                }
+            }
+        }
+
+        // 🚀 【刪除邏輯】一鍵剔除錯誤資料
+        window.deleteRecord = async function(docId, itemTitle) {
+            if (confirm(`⚠️ 確定要刪除「${itemTitle}」這筆紀錄嗎？\n刪除後將無法復原。`)) {
+                try {
+                    const docRef = doc(db, "users", globalUserId, "expenses", docId);
+                    await deleteDoc(docRef);
+                    // 重新載入，完美刷新
+                    loadDashboardData(globalUserId);
+                } catch (e) {
+                    alert("❌ 刪除失敗。");
+                }
+            }
+        }
+
         function renderChart(categoryData) {
             const canvasElement = document.getElementById('expenseChart');
             if (!canvasElement) return;
-            
             const ctx = canvasElement.getContext('2d'); 
             const labels = Object.keys(categoryData);
             const dataValues = Object.values(categoryData);
 
+            if (myChart) { myChart.destroy(); myChart = null; }
+
             if (labels.length === 0) {
-                canvasElement.parentElement.innerHTML = `<div class="text-center py-6 text-white/20 text-xs tracking-wider">暫無支出分類統計</div>`;
+                ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
                 return;
             }
-
-            if (myChart) { myChart.destroy(); }
 
             myChart = new Chart(ctx, {
                 type: 'doughnut',
@@ -229,20 +261,13 @@
                 },
                 options: {
                     responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { boxWidth: 8, padding: 12, font: { size: 10 }, color: 'rgba(255, 255, 255, 0.5)' }
-                        }
-                    },
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, padding: 12, font: { size: 10 }, color: 'rgba(255, 255, 255, 0.5)' } } },
                     cutout: '75%'
                 }
             });
         }
 
-        // 啟動安全性初始化
         initLIFF();
     </script>
 </body>
-</html>
 </html>
