@@ -136,78 +136,71 @@
         let isGroupModeSelected = false; let finalTargetId = null;
 
         window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(initLIFFSafeFlow, 300);
+            // 🟢 讓 LINE SDK 與 Firebase 完全拆開，各走各的陽關道，誰都不准卡住誰
+            initLINEIsolated();
+            initFirebaseIsolated();
         });
-
-        // 🚀 【終極改良對接防線】徹底超渡個人一對一聊天室時差死鎖
-        async function initLIFFSafeFlow() {
+        
+        async function initLINEIsolated() {
             const banner = document.getElementById("sdk-loading-banner");
             const submitBtn = document.getElementById("btn-submit-gateway");
             try {
-                // 1. 先安全建立基礎連線
+                // 先不管 Firebase 活著沒，全力讓 LINE 內部瀏覽器把 SDK 初始化跑完
                 await liff.init({ liffId: MY_LIFF_ID });
                 
-                // 2. 驗證登入狀態，若未登入強制引導
                 if (!liff.isLoggedIn()) { 
                     liff.login(); 
                     return; 
                 }
                 
-                // 3. 🛡️ 【防炸核心】不直接盲目呼叫 getProfile，先用靜態快取 Context 兜底抓取 userId
                 const context = liff.getContext();
-                if (context && context.userId) {
-                    globalUserId = context.userId;
-                }
-
-                // 4. 在安全的上下文環境中，嘗試優雅抓取真實暱稱
+                if (context && context.userId) { globalUserId = context.userId; }
+        
                 try {
                     const profile = await liff.getProfile();
-                    if (profile) {
-                        globalProfile = profile;
-                        if (!globalUserId) globalUserId = profile.userId;
-                    }
-                } catch (pError) {
-                    console.warn("getProfile 時差碰撞，啟動 Context 靜態名冊備份機制", pError);
-                }
-
-                // 5. 輸出畫面的驗證暱稱
-                document.getElementById("confirm-name").innerText = globalProfile.displayName || "雲端帳本負責人";
+                    if (profile) { globalProfile = profile; globalUserId = profile.userId; }
+                } catch(e) {}
+        
+                document.getElementById("confirm-name").innerText = globalProfile.displayName || "雲端帳本主";
                 if (globalProfile.pictureUrl) {
                     document.getElementById("confirm-avatar").style.backgroundImage = `url('${globalProfile.pictureUrl}')`;
                 }
-
-                // 6. 解析網址列參數進行解流分頁預選
+        
+                // 解析分流路由
                 const urlParams = new URLSearchParams(window.location.search);
-                const urlGroupId = urlParams.get('groupId');
-                const urlUserId = urlParams.get('userId');
-
-                if (urlGroupId && !urlUserId) { 
-                    document.getElementById("input-group-id").value = urlGroupId; 
+                if (urlParams.get('groupId') && !urlParams.get('userId')) { 
+                    document.getElementById("input-group-id").value = urlParams.get('groupId'); 
                     setConfirmMode(true); 
                 } else { 
                     setConfirmMode(false); 
                 }
-
-                // 🔓 安全大門正式開啟，點亮按鈕
+        
                 banner.innerText = "✅ LINE 安全通道對接完畢！";
                 banner.className = "bg-emerald-500/10 text-emerald-400 text-[11px] py-2 px-3 rounded-xl border border-emerald-500/20 text-center font-medium tracking-wide";
-                submitBtn.className = "w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3.5 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase";
+                submitBtn.className = "w-full bg-white text-[#0A1128] font-bold text-xs py-3.5 rounded-xl transition shadow-md cursor-pointer uppercase";
                 submitBtn.removeAttribute("disabled");
-
-            } catch (error) { 
-                console.error("SDK 嚴重故障，啟動安全沙包通道機制", error);
-                // 萬一整顆 LINE SDK 徹底失聯，直接發放虛擬萬能 Key，100% 放行，絕不准卡死在載入中
-                if (!globalUserId) globalUserId = "user_" + Math.random().toString(36).substring(2, 7);
-                document.getElementById("confirm-name").innerText = "雲端財務官 (安全機制放行)";
+        
+            } catch (error) {
+                console.error("LINE SDK 內部瀏覽器攔截異常：", error);
+                // 如果被 WebView 徹底閹割，直接強制啟動無痕沙包保底，亮起按鈕放行
+                globalUserId = "user_webview_fallback";
+                document.getElementById("confirm-name").innerText = "管理員 (WebView 保底放行)";
                 setConfirmMode(false);
-
-                banner.innerText = "⚡ 通道已就緒 (已啟動安全代理授權)";
-                banner.className = "bg-amber-500/10 text-amber-400 text-[11px] py-2 px-3 rounded-xl border border-amber-500/20 text-center font-medium tracking-wide";
-                submitBtn.className = "w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3.5 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase";
+                submitBtn.className = "w-full bg-white text-[#0A1128] font-bold text-xs py-3.5 rounded-xl transition shadow-md cursor-pointer uppercase";
                 submitBtn.removeAttribute("disabled");
             }
         }
-
+        
+        // 將 Firebase 的宣告與連線抽到另一個獨立管道，避免干擾 WebView 對 LINE 的認證
+        let db;
+        function initFirebaseIsolated() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+            } catch(e) {
+                console.error("Firebase 在 LINE 內部瀏覽器遭封鎖或初始化失敗：", e);
+            }
+        }
         window.setConfirmMode = function(toGroupMode) {
             isGroupModeSelected = toGroupMode;
             const btnUser = document.getElementById("btn-mode-user"); 
