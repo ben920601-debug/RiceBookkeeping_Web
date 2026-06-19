@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>飯糰小幫手 ｜ 財務管理後台</title>
+    <title>飯糰小幫手 ｜ 財務與揪團管理後台</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -49,14 +49,14 @@
         
         <main id="page-home" class="max-w-md mx-auto px-6 py-6 space-y-6">
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5 relative overflow-hidden">
-                <h2 id="balance-title" class="text-[11px] text-white/50 font-medium tracking-widest uppercase">本月收支結餘 (唯讀)</h2>
+                <h2 id="balance-title" class="text-[11px] text-white/50 font-medium tracking-widest uppercase">本月收支結餘</h2>
                 <div id="home-net-balance" class="text-3xl font-bold mt-1 tracking-tight font-mono">$0</div>
                 <div id="home-totals-row" class="grid grid-cols-2 gap-4 mt-6 pt-5 border-t border-white/10">
                     <div>
                         <span class="text-[10px] text-white/40 block tracking-wider uppercase">總收入</span>
                         <span id="home-total-income" class="text-base font-bold text-white font-mono">+$0</span>
                     </div>
-                    <div class="border-l border-white/10 pl-4">
+                    <div>
                         <span class="text-[10px] text-white/40 block tracking-wider uppercase">總支出</span>
                         <span id="home-total-expense" class="text-base font-medium text-white/70 font-mono">-$0</span>
                     </div>
@@ -64,45 +64,46 @@
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
-                <h3 id="chart-title" class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">支出統計比例</h3>
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">📊 當月支出類型比例</h3>
                 <div class="w-full max-w-[200px] mx-auto"><canvas id="homeExpenseChart"></canvas></div>
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
-                <h3 id="history-title" class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">📑 當月即時流水帳 (唯讀)</h3>
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">📝 當月消費明細管理 (可修正/刪除)</h3>
+                <div id="home-loading-text" class="text-center py-4 text-white/30 text-xs hidden">正在加載明細...</div>
                 <div id="home-history-list" class="space-y-4 divide-y divide-white/5"></div>
             </section>
         </main>
 
-        <main id="page-manage" class="max-w-md mx-auto px-6 py-6 space-y-6 hidden">
-            <section class="bg-[#1C2541] rounded-2xl p-5 shadow-xl border border-white/5 space-y-4">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">起始日期</label>
-                        <input type="date" id="filter-start" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">結束日期</label>
-                        <input type="date" id="filter-end" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-                    </div>
-                </div>
-                <button onclick="queryManagedData()" class="w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase">
-                    🔍 發動條件檢索
-                </button>
+        <main id="page-settle" class="max-w-md mx-auto px-6 py-6 space-y-6 hidden">
+            <section id="group-payer-card" class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5 space-y-4 hidden">
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase">👥 團隊成員墊付總額比例</h3>
+                <div class="w-full max-w-[180px] mx-auto"><canvas id="payerSettleChart"></canvas></div>
+                <div id="payer-summary-list" class="text-xs space-y-2 border-t border-white/5 pt-3 divide-y divide-white/5"></div>
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
-                <h3 id="manage-box-title" class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">🛠️ 數據進階維護控制台</h3>
-                <div id="manage-loading-text" class="text-center py-8 text-white/30 text-xs tracking-wider hidden">正在檢索資料庫...</div>
-                <div id="manage-history-list" class="space-y-4 divide-y divide-white/5"></div>
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">🤝 核銷平帳紀錄維護 (可修正/刪除)</h3>
+                <div id="settle-loading-text" class="text-center py-6 text-white/30 text-xs">正在讀取核銷清單...</div>
+                <div id="settle-history-list" class="space-y-4 divide-y divide-white/5"></div>
+            </section>
+        </main>
+
+        <main id="page-orders" class="max-w-md mx-auto px-6 py-6 space-y-6 hidden">
+            <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-3">🛒 歷史揪團訂單列表</h3>
+                <p class="text-[10px] text-white/40 mb-4">點擊下方訂單卡片，即可展開實時「已付/未付」成員對帳報表。</p>
+                <div id="order-loading-text" class="text-center py-6 text-white/30 text-xs">正在檢索群組訂單...</div>
+                <div id="order-master-list" class="space-y-4"></div>
             </section>
         </main>
     </div>
 
     <footer class="fixed bottom-0 inset-x-0 bg-[#000411]/80 backdrop-blur-lg border-t border-white/5 z-30 pb-safe">
-        <div class="max-w-md mx-auto grid grid-cols-2 h-16">
-            <button onclick="switchPage('home')" id="btn-nav-home" class="flex flex-col items-center justify-center gap-1 transition text-white"><span class="text-base">📊</span><span id="tab-title-1" class="text-[10px] tracking-wider">數據簡報</span></button>
-            <button onclick="switchPage('manage')" id="btn-nav-manage" class="flex flex-col items-center justify-center gap-1 transition text-white/40"><span class="text-base">📑</span><span id="tab-title-2" class="text-[10px] tracking-wider">進階維護</span></button>
+        <div id="nav-container" class="max-w-md mx-auto grid grid-cols-2 h-16">
+            <button onclick="switchPage('home')" id="btn-nav-home" class="flex flex-col items-center justify-center gap-1 transition text-white"><span class="text-base">📊</span><span class="text-[10px] tracking-wider">花費紀錄</span></button>
+            <button onclick="switchPage('settle')" id="btn-nav-settle" class="flex flex-col items-center justify-center gap-1 transition text-white/40"><span class="text-base">🤝</span><span class="text-[10px] tracking-wider">核銷紀錄</span></button>
+            <button onclick="switchPage('orders')" id="btn-nav-orders" class="flex flex-col items-center justify-center gap-1 transition text-white/40 hidden"><span class="text-base">📋</span><span class="text-[10px] tracking-wider">訂單核銷</span></button>
         </div>
     </footer>
 
@@ -110,7 +111,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 🔥 請更換為你的網頁端 Firebase Config
         const firebaseConfig = {
           apiKey: "AIzaSyCqTPnsxv_hOJkR0BnsKjQWgLvlQ3GR9E0",
           authDomain: "ricemoney-db.firebaseapp.com",
@@ -120,10 +120,12 @@
           appId: "1:114147437445:web:3b6dde2873baf6fb3232ec",
           measurementId: "G-55SFYJSG6D"
         };
-        const app = initializeApp(firebaseConfig); const db = getFirestore(app);
-        const MY_LIFF_ID = "2010446205-W1G1WDQQ"; // 🔥 請更換為你的 LIFF ID
 
-        let homeChart = null; let globalUserId = null; let globalProfile = null;
+        const app = initializeApp(firebaseConfig); const db = getFirestore(app);
+        const MY_LIFF_ID = "2010446205-W1G1WDQQ"; 
+
+        let homeChart = null; let payerChart = null;
+        let globalUserId = null; let globalProfile = null;
         let isGroupModeSelected = false; let finalTargetId = null;
 
         async function initLIFF() {
@@ -159,53 +161,57 @@
 
         window.finalizeEntry = function() {
             const inputGroupVal = document.getElementById("input-group-id").value.trim();
+            const navContainer = document.getElementById("nav-container");
+            const btnNavOrders = document.getElementById("btn-nav-orders");
+
             if (isGroupModeSelected) {
                 if (!inputGroupVal) { alert("請輸入群組 ID！"); return; }
                 finalTargetId = inputGroupVal;
                 document.getElementById("mode-badge").innerText = "👥 群組公帳模式";
                 document.getElementById("mode-badge").className = "text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-medium tracking-wider";
-                document.getElementById("balance-title").innerText = "本月群組總開銷公帳 (唯讀)";
-                document.getElementById("chart-title").innerText = "👥 群組成員支出比例統計";
-                document.getElementById("history-title").innerText = "📑 本月群組消費流水帳 (唯讀)";
-                document.getElementById("tab-title-2").innerText = "核銷紀錄";
-                document.getElementById("manage-box-title").innerText = "🤝 群組平帳核銷維護控制台";
+                document.getElementById("balance-title").innerText = "本月群組總支出開銷";
                 document.getElementById("user-name").innerText = `${globalProfile.displayName} (群組成員)`;
+                
+                // 👥 群組模式：解鎖導覽列為 3 格
+                navContainer.className = "max-w-md mx-auto grid grid-cols-3 h-16";
+                btnNavOrders.classList.remove("hidden");
+                document.getElementById("group-payer-card").classList.remove("hidden");
             } else {
                 finalTargetId = globalUserId;
                 document.getElementById("mode-badge").innerText = "👤 個人私帳模式";
-                document.getElementById("balance-title").innerText = "本月收支結餘 (唯讀)";
-                document.getElementById("chart-title").innerText = "支出分類比例";
-                document.getElementById("history-title").innerText = "📑 當月即時流水帳 (唯讀)";
-                document.getElementById("tab-title-2").innerText = "進階維護";
-                document.getElementById("manage-box-title").innerText = "🛠️ 個人記帳進階維護控制台";
+                document.getElementById("balance-title").innerText = "本月個人收支結餘";
                 document.getElementById("user-name").innerText = globalProfile.displayName;
+                
+                // 👤 個人模式：維持 2 格導覽列
+                navContainer.className = "max-w-md mx-auto grid grid-cols-2 h-16";
+                btnNavOrders.classList.add("hidden");
+                document.getElementById("group-payer-card").classList.add("hidden");
             }
             if (globalProfile.pictureUrl) document.getElementById("user-avatar").style.backgroundImage = `url('${globalProfile.pictureUrl}')`;
-            const now = new Date();
-            document.getElementById("filter-start").value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-            document.getElementById("filter-end").value = now.toISOString().split('T')[0];
             document.getElementById("confirm-gateway").remove();
             loadHomeDashboard();
         }
 
         window.switchPage = function(pageTarget) {
-            const homePage = document.getElementById("page-home"); const managePage = document.getElementById("page-manage");
-            const btnHome = document.getElementById("btn-nav-home"); const btnManage = document.getElementById("btn-nav-manage");
-            if (pageTarget === 'home') {
-                homePage.classList.remove("hidden"); managePage.classList.add("hidden");
-                btnHome.className = "flex flex-col items-center justify-center gap-1 transition text-white font-semibold";
-                btnManage.className = "flex flex-col items-center justify-center gap-1 transition text-white/40";
-                loadHomeDashboard();
-            } else {
-                homePage.classList.add("hidden"); managePage.classList.remove("hidden");
-                btnHome.className = "flex flex-col items-center justify-center gap-1 transition text-white/40";
-                btnManage.className = "flex flex-col items-center justify-center gap-1 transition text-white font-semibold";
-                queryManagedData();
-            }
+            const pages = { home: 'page-home', settle: 'page-settle', orders: 'page-orders' };
+            const btns = { home: 'btn-nav-home', settle: 'btn-nav-settle', orders: 'btn-nav-orders' };
+            
+            Object.keys(pages).forEach(p => {
+                document.getElementById(pages[p]).classList.add("hidden");
+                document.getElementById(btns[p]).className = "flex flex-col items-center justify-center gap-1 transition text-white/40";
+            });
+
+            document.getElementById(pages[pageTarget]).classList.remove("hidden");
+            document.getElementById(btns[pageTarget]).className = "flex flex-col items-center justify-center gap-1 transition text-white font-semibold";
+
+            if (pageTarget === 'home') loadHomeDashboard();
+            else if (pageTarget === 'settle') loadSettleDashboard();
+            else if (pageTarget === 'orders') loadOrdersDashboard();
         }
 
-        // 🏠 頁面一加載
+        // 🏠 PAGE 1: 渲染花費紀錄首頁
         async function loadHomeDashboard() {
+            document.getElementById("home-loading-text").classList.remove("hidden");
             try {
                 const now = new Date(); const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 const rootCollection = isGroupModeSelected ? "groups" : "users";
@@ -214,172 +220,312 @@
                 const querySnapshot = await getDocs(q);
 
                 let incomeTotal = 0, expenseTotal = 0;
-                let chartDataMap = {}; // 個人存 category，群組存 created_by_name
-                let listHtml = "";
-
-                if (querySnapshot.empty) {
-                    document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs">當月尚無任何數據。</div>`;
-                    renderHomeChart({}); document.getElementById("home-net-balance").innerText = "$0"; return;
-                }
+                let categoryData = {}; let listHtml = "";
 
                 querySnapshot.forEach((res) => {
-                    const data = res.data(); const amt = data.amount || 0;
+                    const id = res.id; const data = res.data(); const amt = data.amount || 0;
                     const type = data.type || "expense"; const item = data.item || "未命名";
                     const cat = data.category || "生活雜費"; const payer = data.created_by_name || "未知";
                     const dateObj = data.timestamp ? data.timestamp.toDate() : new Date();
                     const dateStr = `${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
 
                     if (type === "income") incomeTotal += amt;
-                    else {
-                        expenseTotal += amt;
-                        if (isGroupModeSelected) { chartDataMap[payer] = (chartDataMap[payer] || 0) + amt; } 
-                        else { chartDataMap[cat] = (chartDataMap[cat] || 0) + amt; }
-                    }
+                    else { expenseTotal += amt; categoryData[cat] = (categoryData[cat] || 0) + amt; }
 
                     listHtml += `
                         <div class="flex justify-between items-center pt-4 text-sm first:pt-0">
                             <div class="flex items-center gap-3">
-                                <div class="w-7 h-7 rounded-full ${type==='income' ? 'bg-white text-[#0A1128] font-bold' : 'bg-white/10 border border-white/5 text-white/80'} text-[11px] flex items-center justify-center">${type==='income'?'入':'支'}</div>
+                                <div class="w-7 h-7 rounded-full ${type==='income' ? 'bg-white text-[#0A1128]' : 'bg-white/10 text-white/80'} text-[11px] font-bold flex items-center justify-center">${type==='income'?'入':'支'}</div>
                                 <div class="flex flex-col">
                                     <span class="font-medium text-white/90 tracking-wide">${item} <span class="text-[9px] text-white/30 font-normal">${isGroupModeSelected ? 'by '+payer : ''}</span></span>
                                     <span class="text-[10px] text-white/40 mt-0.5">${cat}</span>
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <span class="font-bold font-mono ${type==='income' ? 'text-white' : 'text-white/60'}">${type==='income'?'+':'-'} $${amt.toLocaleString()}</span>
-                                <span class="text-white/30 block text-[9px] mt-0.5">${dateStr}</span>
+                            <div class="flex items-center gap-3">
+                                <div class="text-right">
+                                    <span class="font-bold font-mono ${type==='income' ? 'text-white' : 'text-white/60'}">${type==='income'?'+':'-'} $${amt.toLocaleString()}</span>
+                                    <span class="text-white/30 block text-[9px] mt-0.5">${dateStr}</span>
+                                </div>
+                                <div class="flex items-center gap-1 border-l border-white/5 pl-2">
+                                    <button onclick="editRecord('expenses', '${id}', '${item}', ${amt})" class="w-6 h-6 text-white/30 hover:text-white text-xs cursor-pointer">✎</button>
+                                    <button onclick="deleteRecord('expenses', '${id}', '${item}')" class="w-6 h-6 text-rose-400/30 hover:text-rose-400 text-xs cursor-pointer">🗑️</button>
+                                </div>
                             </div>
                         </div>`;
                 });
 
+                document.getElementById("home-loading-text").classList.add("hidden");
+                document.getElementById("home-history-list").innerHTML = listHtml ? listHtml : `<div class="text-center py-6 text-white/20 text-xs">當月帳本尚無消費明細。</div>`;
+                
                 if (isGroupModeSelected) {
                     document.getElementById("home-net-balance").innerText = `$${expenseTotal.toLocaleString()}`;
-                    document.getElementById("home-totals-row").classList.add("hidden"); // 群組隱藏個人淨結餘行
+                    document.getElementById("home-totals-row").classList.add("hidden"); 
                 } else {
                     document.getElementById("home-totals-row").classList.remove("hidden");
                     document.getElementById("home-total-income").innerText = `+$${incomeTotal.toLocaleString()}`;
                     document.getElementById("home-total-expense").innerText = `-$${expenseTotal.toLocaleString()}`;
-                    const net = incomeTotal - expenseTotal;
-                    document.getElementById("home-net-balance").innerText = `${net >= 0 ? '' : '-'}$$${Math.abs(net).toLocaleString()}`;
+                    document.getElementById("home-net-balance").innerText = `$${(incomeTotal - expenseTotal).toLocaleString()}`;
                 }
-                document.getElementById("home-history-list").innerHTML = listHtml;
-                renderHomeChart(chartDataMap);
+                renderDoughnutChart('homeExpenseChart', homeChart, categoryData, v => homeChart = v);
             } catch (e) { console.error(e); }
         }
 
-        // ⚙️ 頁面二加載 (個人拉 expenses 記帳 ； 群組拉 settlements 核銷)
-        window.queryManagedData = async function() {
-            const startVal = document.getElementById("filter-start").value;
-            const endVal = document.getElementById("filter-end").value;
-            if (!startVal || !endVal) return;
-
-            const loadingTxt = document.getElementById("manage-loading-text");
-            const manageList = document.getElementById("manage-history-list");
-            loadingTxt.classList.remove("hidden"); manageList.innerHTML = "";
-
+        // 🤝 PAGE 2: 渲染核銷紀錄頁面
+        async function loadSettleDashboard() {
+            document.getElementById("settle-loading-text").classList.remove("hidden");
             try {
-                const startDate = new Date(startVal + "T00:00:00"); const endDate = new Date(endVal + "T23:59:59");
                 const rootCollection = isGroupModeSelected ? "groups" : "users";
-                const subCollection = isGroupModeSelected ? "settlements" : "expenses"; // 🎯 關鍵分流：群組查核銷紀錄
                 
-                const expensesRef = collection(db, rootCollection, finalTargetId, subCollection);
-                const q = query(expensesRef, where("timestamp", ">=", startDate), where("timestamp", "<=", endDate), orderBy("timestamp", "desc"));
-                const querySnapshot = await getDocs(q);
-
-                loadingTxt.classList.add("hidden");
-                let listHtml = "";
-
-                if (querySnapshot.empty) {
-                    manageList.innerHTML = `<div class="text-center py-12 text-white/20 text-xs">此區間內查無任何紀錄。</div>`; return;
+                // 📊 1. 實時統計群組內付款人的墊付總額比例
+                if (isGroupModeSelected) {
+                    const expRef = collection(db, "groups", finalTargetId, "expenses");
+                    const snap = await getDocs(expRef);
+                    let payerMap = {}; let totalExp = 0;
+                    snap.forEach(d => {
+                        const data = d.data();
+                        if(data.type !== "income") {
+                            const p = data.created_by_name || "未知"; const a = data.amount || 0;
+                            payerMap[p] = (payerMap[p] || 0) + a; totalExp += a;
+                        }
+                    });
+                    renderDoughnutChart('payerSettleChart', payerChart, payerMap, v => payerChart = v);
+                    let summaryHtml = `<div class="font-bold text-white/40 text-[10px] pb-1">💰 成員累計墊付排行：</div>`;
+                    Object.keys(payerMap).sort((a,b)=>payerMap[b]-payerMap[a]).forEach(p => {
+                        summaryHtml += `<div class="flex justify-between py-1.5"><span>🟢 ${p}</span><span class="font-mono font-bold">$${payerMap[p].toLocaleString()} (${((payerMap[p]/totalExp)*100).toFixed(1)}%)</span></div>`;
+                    });
+                    document.getElementById("payer-summary-list").innerHTML = summaryHtml;
                 }
+
+                // 📝 2. 拉取 settlements 集合
+                const settleRef = collection(db, rootCollection, finalTargetId, "settlements");
+                const q = query(settleRef, orderBy("timestamp", "desc"));
+                const querySnapshot = await getDocs(q);
+                let listHtml = "";
 
                 querySnapshot.forEach((res) => {
                     const id = res.id; const data = res.data(); const amt = data.amount || 0;
+                    const p = data.payer_name || "未知"; const r = data.receiver_name || "未知";
+                    const codeRef = data.order_code_ref ? `[訂單 #${data.order_code_ref}]` : '[日常平帳]';
                     const dateObj = data.timestamp ? data.timestamp.toDate() : new Date();
                     const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
 
-                    if (isGroupModeSelected) {
-                        // 🤝 渲染群組核銷 UI
-                        const payer = data.payer_name || "未知"; const receiver = data.receiver_name || "未知";
-                        listHtml += `
-                            <div class="flex justify-between items-center pt-4 text-sm first:pt-0">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[11px] flex items-center justify-center">平</div>
-                                    <div class="flex flex-col">
-                                        <span class="font-medium text-white/90 tracking-wide">${payer} ➡️ 還給 ${receiver}</span>
-                                        <span class="text-[10px] text-white/30 mt-0.5 font-mono">${dateStr}</span>
-                                    </div>
+                    listHtml += `
+                        <div class="flex justify-between items-center pt-4 text-sm first:pt-0">
+                            <div class="flex items-center gap-3">
+                                <div class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center">平</div>
+                                <div class="flex flex-col">
+                                    <span class="font-medium text-white/90 tracking-wide">
+                                        <span class="bg-white/10 px-1 py-0.5 rounded text-[11px]">${p}</span> 還給 <span class="bg-emerald-500/10 text-emerald-400 px-1 py-0.5 rounded text-[11px]">${r}</span>
+                                    </span>
+                                    <span class="text-[10px] text-white/30 mt-1.5 font-mono">${dateStr} ｜ ${codeRef}</span>
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="font-bold font-mono text-emerald-400">$${amt.toLocaleString()}</span>
-                                    <button onclick="deleteSettle('${id}')" class="w-7 h-7 rounded-lg text-rose-400/40 hover:text-rose-400 hover:bg-rose-500/10 transition flex items-center justify-center text-xs">🗑️</button>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="font-bold font-mono text-emerald-400">$${amt.toLocaleString()}</span>
+                                <div class="flex items-center gap-1 border-l border-white/5 pl-2">
+                                    <button onclick="editSettleRecord('${id}', '${p}', '${r}', ${amt})" class="w-6 h-6 text-white/30 hover:text-white text-xs cursor-pointer">✎</button>
+                                    <button onclick="deleteRecord('settlements', '${id}', '平帳紀錄')" class="w-6 h-6 text-rose-400/30 hover:text-rose-400 text-xs cursor-pointer">🗑️</button>
                                 </div>
-                            </div>`;
-                    } else {
-                        // 👤 渲染個人傳統增改刪 UI
-                        const type = data.type || "expense"; const item = data.item || "未命名"; const cat = data.category || "生活雜費";
-                        listHtml += `
-                            <div class="flex justify-between items-center pt-4 text-sm first:pt-0">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-7 h-7 rounded-full ${type==='income'?'bg-white text-[#0A1128] font-bold':'bg-white/10 text-white/80'} text-[11px] flex items-center justify-center">${type==='income'?'入':'支'}</div>
-                                    <div class="flex flex-col">
-                                        <span class="font-medium text-white/90 tracking-wide">${item}</span>
-                                        <span class="text-[10px] text-white/30 mt-0.5 font-mono">${dateStr} ｜ ${cat}</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="font-bold font-mono">${type==='income'?'+':'-'} $${amt.toLocaleString()}</span>
-                                    <div class="flex items-center gap-1 pl-1 border-l border-white/5">
-                                        <button onclick="editRecord('${id}', '${item}', ${amt})" class="w-7 h-7 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition flex items-center justify-center text-xs">✎</button>
-                                        <button onclick="deleteRecord('${id}', '${item}')" class="w-7 h-7 rounded-lg text-rose-400/40 hover:text-rose-400 hover:bg-rose-500/10 transition flex items-center justify-center text-xs">🗑️</button>
-                                    </div>
-                                </div>
-                            </div>`;
-                    }
+                            </div>
+                        </div>`;
                 });
 
-                manageList.innerHTML = listHtml;
-            } catch (e) { console.error(e); loadingTxt.classList.add("hidden"); }
+                document.getElementById("settle-loading-text").classAdd = "hidden"; // 兼容隱藏
+                document.getElementById("settle-loading-text").classList.add("hidden");
+                document.getElementById("settle-history-list").innerHTML = listHtml ? listHtml : `<div class="text-center py-6 text-white/20 text-xs">尚無任何核銷平帳紀錄。</div>`;
+            } catch (e) { console.error(e); }
         }
 
-        // 🛠️ 個人版專屬增刪改邏輯
-        window.editRecord = async function(docId, currentItem, currentAmount) {
-            const newItem = prompt("請輸入修正後的項目名稱:", currentItem); if (!newItem) return;
+        // 📋 PAGE 3: 渲染歷史揪團訂單 (群組公帳專屬核心)
+        async function loadOrdersDashboard() {
+            document.getElementById("order-loading-text").classList.remove("hidden");
+            try {
+                const ordersRef = collection(db, "groups", finalTargetId, "orders");
+                const q = query(ordersRef, orderBy("timestamp", "desc"));
+                const querySnapshot = await getDocs(q);
+                
+                // 同時撈取目前所有的 settlements 作為對帳運算池
+                const settlesRef = collection(db, "groups", finalTargetId, "settlements");
+                const settleSnap = await getDocs(settlesRef);
+                let settlePool = [];
+                settleSnap.forEach(d => settlePool.push(d.data()));
+
+                let masterHtml = "";
+                querySnapshot.forEach((res) => {
+                    const orderId = res.id; const o = res.data();
+                    const code = o.order_code; const payer = o.master_payer_name;
+                    const date = o.order_date; const total = o.total_amount || 0;
+                    const items = o.items || [];
+
+                    // 🎯 實時對帳聯集運算
+                    let expected = {}; items.forEach(i => expected[i.buyer] = (expected[i.buyer] || 0) + i.price);
+                    let actual = {}; settlePool.filter(s => s.order_code_ref === code).forEach(s => actual[s.payer_name] = (actual[s.payer_name] || 0) + s.amount);
+
+                    let subRowsHtml = "";
+                    Object.keys(expected).forEach(person => {
+                        const targetAmt = expected[person]; const paidAmt = actual[person] || 0;
+                        if(paidAmt >= targetAmt) {
+                            subRowsHtml += `<div class="flex justify-between py-1 text-emerald-400"><span>🟢 ${person} (已付清)</span><span class="font-mono">$${targetAmt}</span></div>`;
+                        } else if (paidAmt > 0) {
+                            subRowsHtml += `<div class="flex justify-between py-1 text-amber-400"><span>🟡 ${person} (已付 $${paidAmt}，欠 ${targetAmt-paidAmt})</span><span class="font-mono">$${targetAmt}</span></div>`;
+                        } else {
+                            subRowsHtml += `<div class="flex justify-between py-1 text-rose-400"><span>🔴 ${person} (未付款)</span><span class="font-mono">$${targetAmt}</span></div>`;
+                        }
+                    });
+
+                    // 項目原始明細展開維護
+                    let rawItemsHtml = "";
+                    items.forEach((item, index) => {
+                        rawItemsHtml += `
+                            <div class="flex justify-between items-center bg-[#0A1128]/50 p-2 rounded-xl text-xs">
+                                <span class="text-white/60"><span class="text-white font-bold">${item.buyer}</span>: ${item.item}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono font-bold text-white/80">$${item.price}</span>
+                                    <button onclick="editOrderItem('${orderId}', ${index}, '${item.buyer}', '${item.item}', ${item.price})" class="text-white/30 hover:text-white cursor-pointer">✎</button>
+                                    <button onclick="deleteOrderItem('${orderId}', ${index})" class="text-rose-400/30 hover:text-rose-400 cursor-pointer">🗑️</button>
+                                </div>
+                            </div>`;
+                    });
+
+                    masterHtml += `
+                        <div class="bg-[#0A1128] border border-white/5 rounded-2xl p-4 space-y-3 shadow-lg">
+                            <div class="flex justify-between items-start border-b border-white/5 pb-2.5">
+                                <div>
+                                    <span class="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-mono font-bold">#${code}</span>
+                                    <span class="text-xs text-white/40 ml-2 font-mono">${date}</span>
+                                    <div class="text-xs font-bold mt-1 text-white/80">💳 墊款買單人：${payer}</div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm font-black font-mono text-white">$${total.toLocaleString()}</span>
+                                    <button onclick="deleteOrderMaster('${orderId}', '${code}')" class="block text-[10px] text-rose-400/40 hover:text-rose-400 mt-1 ml-auto cursor-pointer">🗑️ 刪除整單</button>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-1.5">
+                                <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold">🛒 點單品項調整控制：</div>
+                                ${rawItemsHtml}
+                            </div>
+
+                            <div class="bg-[#1C2541] rounded-xl p-3 border border-white/5 text-xs space-y-1">
+                                <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold pb-1">📊 成員實時收欠款對帳單：</div>
+                                ${subRowsHtml}
+                            </div>
+                        </div>`;
+                });
+
+                document.getElementById("order-loading-text").classList.add("hidden");
+                document.getElementById("order-master-list").innerHTML = masterHtml ? masterHtml : `<div class="text-center py-6 text-white/20 text-xs">本群組尚無任何揪團訂單。</div>`;
+            } catch (e) { console.error(e); }
+        }
+
+        // ==========================================
+        // 🛠️ 資料庫通用維護元件 (CRUD 完全體)
+        // ==========================================
+        window.editRecord = async function(subCollection, docId, currentItem, currentAmount) {
+            const newItem = prompt("請輸入修正後的項目/類別名稱:", currentItem); if (!newItem) return;
             const newAmountStr = prompt("請輸入修正後的金額:", currentAmount); if (!newAmountStr) return;
             const newAmount = parseInt(newAmountStr, 10); if (isNaN(newAmount) || newAmount <= 0) return;
-            try { await updateDoc(doc(db, "users", finalTargetId, "expenses", docId), { item: newItem.trim(), amount: newAmount }); queryManagedData(); } catch (e) {}
+
+            try {
+                const rootCollection = isGroupModeSelected ? "groups" : "users";
+                const docRef = doc(db, rootCollection, finalTargetId, subCollection, docId);
+                await updateDoc(docRef, { item: newItem.trim(), amount: newAmount });
+                loadHomeDashboard();
+            } catch (e) { alert("修正失敗"); }
         }
-        window.deleteRecord = async function(docId, itemTitle) {
-            if (confirm(`⚠️ 確定要徹底刪除個人紀錄「${itemTitle}」嗎？`)) {
-                try { await deleteDoc(doc(db, "users", finalTargetId, "expenses", docId)); queryManagedData(); } catch (e) {}
+
+        window.editSettleRecord = async function(docId, currentPayer, currentReceiver, currentAmount) {
+            const newPayer = prompt("請修正付款人姓名:", currentPayer); if (!newPayer) return;
+            const newReceiver = prompt("請修正收款人姓名:", currentReceiver); if (!newReceiver) return;
+            const newAmountStr = prompt("請修正核銷金額:", currentAmount); if (!newAmountStr) return;
+            const newAmount = parseInt(newAmountStr, 10); if (isNaN(newAmount) || newAmount <= 0) return;
+
+            try {
+                const docRef = doc(db, "groups", finalTargetId, "settlements", docId);
+                await updateDoc(docRef, { payer_name: newPayer.trim(), receiver_name: newReceiver.trim(), amount: newAmount });
+                loadSettleDashboard();
+            } catch (e) { alert("修正失敗"); }
+        }
+
+        window.deleteRecord = async function(subCollection, docId, itemTitle) {
+            if (confirm(`⚠️ 確定要徹底刪除「${itemTitle}」紀錄嗎？此動作無法復原。`)) {
+                try {
+                    const rootCollection = isGroupModeSelected ? "groups" : "users";
+                    await deleteDoc(doc(db, rootCollection, finalTargetId, subCollection, docId));
+                    if(subCollection === 'expenses') loadHomeDashboard();
+                    else loadSettleDashboard();
+                } catch (e) { alert("刪除失敗"); }
             }
         }
 
-        // 🤝 群組核銷一鍵剔除
-        window.deleteSettle = async function(docId) {
-            if (confirm(`⚠️ 確定要刪除這筆核銷對帳紀錄嗎？（刪除後該平帳算式將失效）`)) {
-                try { await deleteDoc(doc(db, "groups", finalTargetId, "settlements", docId)); queryManagedData(); } catch (e) {}
+        // 🎯 訂單子項微調與刪除
+        window.editOrderItem = async function(orderId, index, currentBuyer, currentItem, currentPrice) {
+            const newBuyer = prompt("請修改點單人姓名:", currentBuyer); if (!newBuyer) return;
+            const newItem = prompt("請修改品項名稱:", currentItem); if (!newItem) return;
+            const newPriceStr = prompt("請修改品項金額:", currentPrice); if (!newPriceStr) return;
+            const newPrice = parseInt(newPriceStr, 10); if (isNaN(newPrice) || newPrice <= 0) return;
+
+            try {
+                const docRef = doc(db, "groups", finalTargetId, "orders", orderId);
+                const snap = await getDocs(query(collection(db, "groups", finalTargetId, "orders")));
+                let currentItems = [];
+                snap.forEach(d => { if(d.id === orderId) currentItems = d.data().items; });
+                
+                currentItems[index] = { buyer: newBuyer.trim(), item: newItem.trim(), price: newPrice };
+                const newTotal = currentItems.reduce((acc, i) => acc + i.price, 0);
+                
+                await updateDoc(docRef, { items: currentItems, total_amount: newTotal });
+                loadOrdersDashboard();
+            } catch (e) { alert("微調失敗"); }
+        }
+
+        window.deleteOrderItem = async function(orderId, index) {
+            if (confirm("⚠️ 確定要刪除這筆訂單內的某個品項嗎？")) {
+                try {
+                    const docRef = doc(db, "groups", finalTargetId, "orders", orderId);
+                    const snap = await getDocs(query(collection(db, "groups", finalTargetId, "orders")));
+                    let currentItems = [];
+                    snap.forEach(d => { if(d.id === orderId) currentItems = d.data().items; });
+                    
+                    currentItems.splice(index, 1);
+                    const newTotal = currentItems.reduce((acc, i) => acc + i.price, 0);
+                    
+                    await updateDoc(docRef, { items: currentItems, total_amount: newTotal });
+                    loadOrdersDashboard();
+                } catch (e) { alert("刪除失敗"); }
             }
         }
 
-        function renderHomeChart(chartDataMap) {
-            const canvasElement = document.getElementById('homeExpenseChart'); if (!canvasElement) return;
-            const ctx = canvasElement.getContext('2d'); const labels = Object.keys(chartDataMap); const dataValues = Object.values(chartDataMap);
-            if (homeChart) { homeChart.destroy(); homeChart = null; }
-            if (labels.length === 0) { ctx.clearRect(0, 0, canvasElement.width, canvasElement.height); return; }
+        window.deleteOrderMaster = async function(orderId, code) {
+            if (confirm(`⚠️ 確定要將這整整一筆 ＃${code} 揪團訂單徹底刪除嗎？`)) {
+                try {
+                    await deleteDoc(doc(db, "groups", finalTargetId, "orders", orderId));
+                    loadOrdersDashboard();
+                } catch (e) { alert("刪除失敗"); }
+            }
+        }
 
-            homeChart = new Chart(ctx, {
+        // 📈 通用圓餅圖渲染元件
+        function renderDoughnutChart(canvasId, chartRef, dataMap, setChartRef) {
+            const el = document.getElementById(canvasId); if (!el) return;
+            const ctx = el.getContext('2d'); const labels = Object.keys(dataMap); const vals = Object.values(dataMap);
+            
+            if (chartRef) { chartRef.destroy(); }
+            if (labels.length === 0) { ctx.clearRect(0, 0, el.width, el.height); return; }
+
+            const newChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: labels,
-                    datasets: [{ data: dataValues, backgroundColor: ['#FFFFFF', '#34D399', '#60A5FA', '#FBBF24', '#F87171', '#A78BFA'], borderWidth: 2, borderColor: '#1C2541' }]
+                    datasets: [{ data: vals, backgroundColor: ['#FFFFFF', '#34D399', '#60A5FA', '#FBBF24', '#F87171', '#A78BFA'], borderWidth: 2, borderColor: '#1C2541' }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 6, padding: 8, font: { size: 9 }, color: 'rgba(255, 255, 255, 0.4)' } } },
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 6, padding: 6, font: { size: 9 }, color: 'rgba(255, 255, 255, 0.4)' } } },
                     cutout: '75%'
                 }
             });
+            setChartRef(newChart);
         }
 
         initLIFF();
