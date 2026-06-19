@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
-<body class="bg-[#0A1128] text-white font-sans antialiased selection:bg-white/20 flex min-h-screen">
+<body class="bg-[#0A1128] text-white font-sans antialiased selection:bg-white/20 pb-24 min-h-screen flex flex-col">
 
     <div id="login-gateway" class="fixed inset-0 bg-[#0A1128] z-50 flex flex-col items-center justify-center px-6 transition-opacity duration-300">
         <div class="text-center space-y-4">
@@ -17,32 +17,17 @@
         </div>
     </div>
 
-    <aside class="w-64 bg-[#000411]/80 border-r border-white/5 flex flex-col fixed inset-y-0 left-0 z-40">
-        <div class="p-6 border-b border-white/5 flex items-center gap-3">
-            <span id="user-avatar" class="w-7 h-7 rounded-full bg-white/10 bg-cover bg-center"></span>
-            <div class="flex flex-col">
-                <span id="user-name" class="text-xs font-bold tracking-wider">載入中...</span>
-                <span class="text-[9px] text-white/30 tracking-widest uppercase">Rice Cooker Tech</span>
-            </div>
+    <header class="bg-[#000411]/40 backdrop-blur-md text-white/90 py-4 px-6 border-b border-white/5 sticky top-0 z-40 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+            <span id="user-avatar" class="w-6 h-6 rounded-full bg-white/10 bg-cover bg-center"></span>
+            <span id="user-name" class="text-xs font-bold tracking-wider">載入中...</span>
         </div>
-        
-        <nav class="flex-1 p-4 space-y-1">
-            <button onclick="switchPage('home')" id="btn-nav-home" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium tracking-wide transition bg-white/10 text-white">
-                <span>📊</span> 當月總覽簡報
-            </button>
-            <button onclick="switchPage('manage')" id="btn-nav-manage" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium tracking-wide transition text-white/50 hover:text-white hover:bg-white/5">
-                <span>📑</span> 進階明細管理
-            </button>
-        </nav>
+        <span class="text-[9px] text-white/30 tracking-widest uppercase font-semibold">Rice Cooker Tech</span>
+    </header>
 
-        <div class="p-4 border-t border-white/5 text-[10px] text-white/20 tracking-widest text-center uppercase">
-            v2.1 Pro 完全體
-        </div>
-    </aside>
-
-    <div class="flex-1 pl-64 min-h-screen flex flex-col">
+    <div class="flex-1 w-full mx-auto">
         
-        <main id="page-home" class="max-w-2xl w-full mx-auto px-8 py-8 space-y-6">
+        <main id="page-home" class="max-w-md mx-auto px-6 py-6 space-y-6">
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5 relative overflow-hidden">
                 <h2 class="text-[11px] text-white/50 font-medium tracking-widest uppercase">本月收支結餘 (唯讀)</h2>
                 <div id="home-net-balance" class="text-3xl font-bold mt-1 tracking-tight font-mono">$0</div>
@@ -59,8 +44,8 @@
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
-                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4 flex items-center gap-2">支出分類比例</h3>
-                <div class="w-full max-w-[220px] mx-auto"><canvas id="homeExpenseChart"></canvas></div>
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">支出分類比例</h3>
+                <div class="w-full max-w-[200px] mx-auto"><canvas id="homeExpenseChart"></canvas></div>
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
@@ -69,31 +54,33 @@
             </section>
         </main>
 
-        <main id="page-manage" class="max-w-3xl w-full mx-auto px-8 py-8 space-y-6 hidden">
-            <section class="bg-[#1C2541] rounded-2xl p-5 shadow-xl border border-white/5 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div>
-                    <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1.5">起始日期</label>
-                    <input type="date" id="filter-start" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30">
+        <main id="page-manage" class="max-w-md mx-auto px-6 py-6 space-y-6 hidden">
+            <section class="bg-[#1C2541] rounded-2xl p-5 shadow-xl border border-white/5 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">起始日期</label>
+                        <input type="date" id="filter-start" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">結束日期</label>
+                        <input type="date" id="filter-end" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    </div>
                 </div>
                 <div>
-                    <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1.5">結束日期</label>
-                    <input type="date" id="filter-end" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30">
-                </div>
-                <div>
-                    <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1.5">收支類型</label>
-                    <select id="filter-type" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30">
+                    <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">收支類型</label>
+                    <select id="filter-type" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
                         <option value="all">全部類型</option>
                         <option value="expense">支出 (Expense)</option>
                         <option value="income">收入 (Income)</option>
                     </select>
                 </div>
-                <button onclick="queryManagedData()" class="w-full bg-white text-[#0A1128] font-bold text-sm tracking-widest py-2.5 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer">
-                    🔍 篩選查詢
+                <button onclick="queryManagedData()" class="w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase">
+                    🔍 篩選與檢索數據
                 </button>
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
-                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">🛠️ 帳目進階維護控制台 (可刪增改)</h3>
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">🛠️ 帳目進階維護控制台</h3>
                 <div id="manage-loading-text" class="text-center py-8 text-white/30 text-xs tracking-wider hidden">正在檢索資料庫...</div>
                 <div id="manage-history-list" class="space-y-4 divide-y divide-white/5"></div>
             </section>
@@ -101,31 +88,44 @@
         
     </div>
 
+    <footer class="fixed bottom-0 inset-x-0 bg-[#000411]/80 backdrop-blur-lg border-t border-white/5 z-40 pb-safe">
+        <div class="max-w-md mx-auto grid grid-cols-2 h-16">
+            <button onclick="switchPage('home')" id="btn-nav-home" class="flex flex-col items-center justify-center gap-1 transition text-white">
+                <span class="text-base">📊</span>
+                <span class="text-[10px] font-medium tracking-wider">當月簡報</span>
+            </button>
+            <button onclick="switchPage('manage')" id="btn-nav-manage" class="flex flex-col items-center justify-center gap-1 transition text-white/40">
+                <span class="text-base">📑</span>
+                <span class="text-[10px] font-medium tracking-wider">進階維護</span>
+            </button>
+        </div>
+    </footer>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 🔥 1. 填入你的網頁端 Firebase Config
-           const firebaseConfig = {
-              apiKey: "AIzaSyCqTPnsxv_hOJkR0BnsKjQWgLvlQ3GR9E0",
-              authDomain: "ricemoney-db.firebaseapp.com",
-              projectId: "ricemoney-db",
-              storageBucket: "ricemoney-db.firebasestorage.app",
-              messagingSenderId: "114147437445",
-              appId: "1:114147437445:web:3b6dde2873baf6fb3232ec",
-              measurementId: "G-55SFYJSG6D"
-            };
+        // 🔥 填入你的網頁端 Firebase Config
+        const firebaseConfig = {
+          apiKey: "AIzaSyCqTPnsxv_hOJkR0BnsKjQWgLvlQ3GR9E0",
+          authDomain: "ricemoney-db.firebaseapp.com",
+          projectId: "ricemoney-db",
+          storageBucket: "ricemoney-db.firebasestorage.app",
+          messagingSenderId: "114147437445",
+          appId: "1:114147437445:web:3b6dde2873baf6fb3232ec",
+          measurementId: "G-55SFYJSG6D"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 🔥 2. 填入你的 LINE LIFF ID
+        // 🔥 填入你的 LINE LIFF ID
         const MY_LIFF_ID = "2010446205-W1G1WDQQ"; 
 
         let homeChart = null;
         let globalUserId = null;
 
-        // 初始化安全登入通道
+        // 初始化安全通道
         async function initLIFF() {
             try {
                 await liff.init({ liffId: MY_LIFF_ID });
@@ -139,17 +139,14 @@
                     document.getElementById("user-avatar").style.backgroundImage = `url('${profile.pictureUrl}')`;
                 }
 
-                // 初始化篩選區間的預設日期 (當月1號到今天)
                 const now = new Date();
                 document.getElementById("filter-start").value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
                 document.getElementById("filter-end").value = now.toISOString().split('T')[0];
 
-                // 解鎖畫面
                 const gateway = document.getElementById("login-gateway");
                 gateway.classList.add("opacity-0");
                 setTimeout(() => gateway.remove(), 300);
 
-                // 預設加載首頁數據
                 loadHomeDashboard();
             } catch (error) {
                 console.error("LIFF 卡死:", error);
@@ -157,7 +154,7 @@
             }
         }
 
-        // 🔀 分頁切換器 UI 邏輯
+        // 🔀 底部切換分頁邏輯
         window.switchPage = function(pageTarget) {
             const homePage = document.getElementById("page-home");
             const managePage = document.getElementById("page-manage");
@@ -167,19 +164,19 @@
             if (pageTarget === 'home') {
                 homePage.classList.remove("hidden");
                 managePage.classList.add("hidden");
-                btnHome.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium tracking-wide transition bg-white/10 text-white";
-                btnManage.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium tracking-wide transition text-white/50 hover:text-white hover:bg-white/5";
+                btnHome.className = "flex flex-col items-center justify-center gap-1 transition text-white font-semibold";
+                btnManage.className = "flex flex-col items-center justify-center gap-1 transition text-white/40";
                 loadHomeDashboard();
             } else {
                 homePage.classList.add("hidden");
                 managePage.classList.remove("hidden");
-                btnHome.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium tracking-wide transition text-white/50 hover:text-white hover:bg-white/5";
-                btnManage.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium tracking-wide transition bg-white/10 text-white";
+                btnHome.className = "flex flex-col items-center justify-center gap-1 transition text-white/40";
+                btnManage.className = "flex flex-col items-center justify-center gap-1 transition text-white font-semibold";
                 queryManagedData();
             }
         }
 
-        // 🏠 渲染分頁一：當月唯讀總覽
+        // 🏠 渲染分頁一
         async function loadHomeDashboard() {
             try {
                 const now = new Date();
@@ -194,7 +191,7 @@
                 let listHtml = "";
 
                 if (querySnapshot.empty) {
-                    document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs">本月尚無任何記帳數據。</div>`;
+                    document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs">本月尚無任何數據。</div>`;
                     renderHomeChart({});
                     updateHomeTotals(0, 0, 0);
                     return;
@@ -241,13 +238,11 @@
             document.getElementById("home-net-balance").innerText = `${net >= 0 ? '' : '-'}$$${Math.abs(net).toLocaleString()}`;
         }
 
-        // ⚙️ 渲染分頁二：進階自訂篩選管理 (具備編輯/刪除按鈕)
+        // ⚙️ 渲染分頁二
         window.queryManagedData = async function() {
             const startVal = document.getElementById("filter-start").value;
             const endVal = document.getElementById("filter-end").value;
             const typeVal = document.getElementById("filter-type").value;
-
-            if (!startVal || !endVal) { alert("請選擇完整的查詢區間！"); return; }
 
             const loadingTxt = document.getElementById("manage-loading-text");
             const manageList = document.getElementById("manage-history-list");
@@ -267,7 +262,7 @@
                 let listHtml = "";
 
                 if (querySnapshot.empty) {
-                    manageList.innerHTML = `<div class="text-center py-12 text-white/20 text-xs tracking-wider">該指定區間內查無任何收支紀錄。</div>`;
+                    manageList.innerHTML = `<div class="text-center py-12 text-white/20 text-xs">該指定區間內查無紀錄。</div>`;
                     return;
                 }
 
@@ -281,7 +276,6 @@
                     const dateObj = data.timestamp ? data.timestamp.toDate() : new Date();
                     const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
 
-                    // 如果有篩選特定型態
                     if (typeVal !== "all" && type !== typeVal) return;
 
                     const isIncome = type === "income";
@@ -294,54 +288,49 @@
                                     <span class="text-[10px] text-white/30 mt-0.5 font-mono">${dateStr}</span>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-4">
-                                <span class="font-bold font-mono text-sm ${isIncome ? 'text-white' : 'text-white/60'}">${isIncome ? '+' : '-'} $${amt.toLocaleString()}</span>
-                                <div class="flex items-center gap-1 pl-2 border-l border-white/5">
-                                    <button onclick="editRecord('${id}', '${item}', ${amt})" class="w-8 h-8 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition flex items-center justify-center text-xs">✎</button>
-                                    <button onclick="deleteRecord('${id}', '${item}')" class="w-8 h-8 rounded-lg text-rose-400/40 hover:text-rose-400 hover:bg-rose-500/10 transition flex items-center justify-center text-xs">🗑️</button>
+                            <div class="flex items-center gap-3">
+                                <span class="font-bold font-mono ${isIncome ? 'text-white' : 'text-white/60'}">${isIncome ? '+' : '-'} $${amt.toLocaleString()}</span>
+                                <div class="flex items-center gap-1 pl-1 border-l border-white/5">
+                                    <button onclick="editRecord('${id}', '${item}', ${amt})" class="w-7 h-7 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition flex items-center justify-center text-xs">✎</button>
+                                    <button onclick="deleteRecord('${id}', '${item}')" class="w-7 h-7 rounded-lg text-rose-400/40 hover:text-rose-400 hover:bg-rose-500/10 transition flex items-center justify-center text-xs">🗑️</button>
                                 </div>
                             </div>
                         </div>`;
                 });
 
-                manageList.innerHTML = listHtml ? listHtml : `<div class="text-center py-12 text-white/20 text-xs">該類別篩選無符合項目。</div>`;
+                manageList.innerHTML = listHtml ? listHtml : `<div class="text-center py-12 text-white/20 text-xs">無符合條件項目。</div>`;
             } catch (e) {
-                console.error(e);
                 loadingTxt.classList.add("hidden");
-                manageList.innerHTML = `<div class="text-center py-6 text-rose-400/50 text-xs">檢索失敗，請確保 Firestore 的複合索引 (Composite Index) 已發佈。</div>`;
+                manageList.innerHTML = `<div class="text-center py-6 text-rose-400/50 text-xs">檢索失敗。</div>`;
             }
         }
 
-        // 🛠️ 編輯處理
+        // 🛠️ 編輯與刪除
         window.editRecord = async function(docId, currentItem, currentAmount) {
-            const newItem = prompt("請輸入修正後的【項目名稱】:", currentItem);
-            if (newItem === null) return;
-            const newAmountStr = prompt("請輸入修正後的【金額】:", currentAmount);
-            if (newAmountStr === null) return;
+            const newItem = prompt("請輸入修正後的項目名稱:", currentItem);
+            if (!newItem) return;
+            const newAmountStr = prompt("請輸入修正後的金額:", currentAmount);
+            if (!newAmountStr) return;
             const newAmount = parseInt(newAmountStr, 10);
-            if (isNaN(newAmount) || newAmount <= 0) { alert("請輸入有效的金額！"); return; }
+            if (isNaN(newAmount) || newAmount <= 0) { alert("金額錯誤"); return; }
 
-            if (confirm(`確定要將資料修正嗎？`)) {
-                try {
-                    const docRef = doc(db, "users", globalUserId, "expenses", docId);
-                    await updateDoc(docRef, { item: newItem.trim(), amount: newAmount });
-                    queryManagedData(); // 刷新管理分頁
-                } catch (e) { alert("修改失敗"); }
-            }
+            try {
+                const docRef = doc(db, "users", globalUserId, "expenses", docId);
+                await updateDoc(docRef, { item: newItem.trim(), amount: newAmount });
+                queryManagedData();
+            } catch (e) { alert("修改失敗"); }
         }
 
-        // 🗑️ 刪除處理
         window.deleteRecord = async function(docId, itemTitle) {
-            if (confirm(`⚠️ 確定要徹底刪除「${itemTitle}」嗎？`)) {
+            if (confirm(`⚠️ 確定要彻底刪除「${itemTitle}」嗎？`)) {
                 try {
                     const docRef = doc(db, "users", globalUserId, "expenses", docId);
                     await deleteDoc(docRef);
-                    queryManagedData(); // 刷新管理分頁
+                    queryManagedData();
                 } catch (e) { alert("刪除失敗"); }
             }
         }
 
-        // 圓餅圖渲染
         function renderHomeChart(categoryData) {
             const canvasElement = document.getElementById('homeExpenseChart');
             if (!canvasElement) return;
@@ -364,7 +353,7 @@
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, padding: 10, font: { size: 10 }, color: 'rgba(255, 255, 255, 0.4)' } } },
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 6, padding: 8, font: { size: 9 }, color: 'rgba(255, 255, 255, 0.4)' } } },
                     cutout: '75%'
                 }
             });
