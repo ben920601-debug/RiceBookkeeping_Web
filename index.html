@@ -171,38 +171,67 @@
         </div>
     </footer>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, doc, query, where, orderBy, getDocs, getDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // 已對齊您的實體 Firebase 金鑰
-        const firebaseConfig = {
-          apiKey: "AIzaSyCqTPnsxv_hOJkR0BnsKjQWgLvlQ3GR9E0",
-          authDomain: "ricemoney-db.firebaseapp.com",
-          projectId: "ricemoney-db",
-          storageBucket: "ricemoney-db.firebasestorage.app",
-          messagingSenderId: "114147437445",
-          appId: "1:114147437445:web:3b6dde2873baf6fb3232ec",
-          measurementId: "G-55SFYJSG6D"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
+<script>
+        const API_BASE = "https://0.0.0.0:8001"; // 記得修改這裡
         const MY_LIFF_ID = "2010446205-W1G1WDQQ"; 
 
-        let homeChart = null;
-        let payerChart = null;
-        let globalUserId = null;
-        let globalProfile = { displayName: "雲端帳本主", pictureUrl: "" };
-        
-        let isGroupModeSelected = false;
-        let finalTargetId = null;
-        let currentGroupState = 'normal';
+        let homeChart = null, payerChart = null;
+        let globalUserId = null, globalProfile = { displayName: "雲端帳本主" };
+        let isGroupModeSelected = false, finalTargetId = null;
 
-        // 監聽器指針管理
-        let unsubscribeHome = null;
-        let unsubscribeState = null;
+        window.addEventListener('DOMContentLoaded', () => { setTimeout(initLIFF, 300); });
+
+        async function initLIFF() {
+            await liff.init({ liffId: MY_LIFF_ID });
+            if (!liff.isLoggedIn()) { liff.login(); return; }
+            globalProfile = await liff.getProfile();
+            globalUserId = globalProfile.userId;
+            document.getElementById("login-gateway").remove();
+            // 這裡連接你原本的 finalizeEntry 邏輯
+        }
+
+        // 🔄 核心 API 替換：SQLite 數據抓取
+        async function injectRealtimePipeline() {
+            try {
+                const res = await fetch(`${API_BASE}/api/data?user_id=${finalTargetId}`);
+                const result = await res.json();
+                const expenses = result.expenses;
+
+                let incomeTotal = 0, expenseTotal = 0, categoryData = {};
+                let listHtml = "";
+
+                expenses.forEach(d => {
+                    if (d.type === 'income') incomeTotal += d.amount;
+                    else { expenseTotal += d.amount; categoryData[d.category] = (categoryData[d.category] || 0) + d.amount; }
+                    listHtml += `<div class="flex justify-between items-center pt-4 font-mono text-sm"><span>${d.item}</span><span>$${d.amount.toLocaleString()}</span></div>`;
+                });
+
+                document.getElementById("home-net-balance").innerText = `$${(incomeTotal - expenseTotal).toLocaleString()}`;
+                document.getElementById("home-history-list").innerHTML = listHtml;
+                renderHomeChart(categoryData);
+            } catch (e) { console.error("API 獲取失敗:", e); }
+        }
+
+        // 🛠️ CRUD 替換 (對接 main.py 的路由)
+        window.deleteRecord = async function(id, item) {
+            if (!confirm(`確認刪除 ${item}?`)) return;
+            await fetch(`${API_BASE}/api/delete`, { method: 'POST', body: JSON.stringify({id}) });
+            queryManagedData();
+        }
+
+        window.editRecord = async function(id, item, amt) {
+            const newItem = prompt("名稱:", item);
+            const newAmt = prompt("金額:", amt);
+            await fetch(`${API_BASE}/api/update`, { method: 'POST', body: JSON.stringify({id, item: newItem, amount: newAmt}) });
+            queryManagedData();
+        }
+
+        // 保持你原本的所有渲染函式不動
+        function renderHomeChart(catData) {
+            const ctx = document.getElementById('homeExpenseChart').getContext('2d');
+            if (homeChart) homeChart.destroy();
+            homeChart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(catData), datasets: [{ data: Object.values(catData), backgroundColor: ['#FFFFFF', '#94A3B8', '#334155'] }] } });
+        }
 
         window.addEventListener('DOMContentLoaded', () => {
             setTimeout(initLIFFSafeFlow, 300);
