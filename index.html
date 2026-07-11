@@ -172,54 +172,68 @@
     </footer>
 
     <script>
-        // ========================================================
-        // 伺服器 API 基礎設定
-        // 請將下方網址替換為您的 Linux 伺服器 (例如 FastAPI/Flask) 網址
-        // ========================================================
-        const API_BASE_URL = "http://192.168.0.176:8001";
+        // ==========================================
+        // ⚙️ API 連線設定
+        // 請視部署狀況修改：若前端與 FastAPI 後端同網域，留空字串即可；
+        // 若後端部署在別的網址（例如 Zeabur / Render），請填入完整網址，
+        // 例如："https://your-backend.zeabur.app"
+        // ==========================================
+        const API_BASE_URL = "";
+        const POLL_INTERVAL_MS = 5000; // 輪詢間隔：5 秒
 
-        const MY_LIFF_ID = "2010446205-W1G1WDQQ"; 
+        const MY_LIFF_ID = "2010446205-W1G1WDQQ";
 
         let homeChart = null;
         let payerChart = null;
         let globalUserId = null;
         let globalProfile = { displayName: "雲端帳本主", pictureUrl: "" };
-        
+
         let isGroupModeSelected = false;
+        console.log('[DEBUG] 腳本已載入，初始 isGroupModeSelected =', isGroupModeSelected);
         let finalTargetId = null;
         let currentGroupState = 'normal';
 
-        // 輪詢定時器 (取代 Firebase onSnapshot)
-        let homePollingInterval = null;
+        // 輪詢計時器管理（取代原本 Firestore 的 onSnapshot 監聽指針）
+        let homePollTimer = null;
+        let statePollTimer = null;
 
-       window.addEventListener('DOMContentLoaded', () => { setTimeout(initLIFFSafeFlow, 300); });
+        // ==========================================
+        // 🌐 統一的 API 呼叫工具
+        // ==========================================
+        async function apiFetch(path, options = {}) {
+            const res = await fetch(`${API_BASE_URL}${path}`, {
+                headers: { "Content-Type": "application/json" },
+                ...options
+            });
+            if (!res.ok) {
+                let detail = "";
+                try { detail = (await res.json()).detail || ""; } catch (e) {}
+                throw new Error(detail || `API 錯誤 (${res.status})`);
+            }
+            if (res.status === 204) return null;
+            return res.json();
+        }
 
-                async function initLIFFSafeFlow() {
-                    try {
-                        await liff.init({ liffId: MY_LIFF_ID });
-                        if (!liff.isLoggedIn()) { liff.login(); return; }
-                        const profile = await liff.getProfile();
-                        globalUserId = profile.userId;
-                        document.getElementById("login-gateway").remove();
-                        document.getElementById("confirm-gateway").classList.remove("hidden");
-                    } catch (e) { console.error("LIFF 初始化失敗"); }
-                }
-                    async function fetchHomeData(isSilent = false) {
-                    if (!finalTargetId) return;
-                    
-                    // 強制使用 main.py 定義好的標準路徑 /api/data
-                    const url = `${API_BASE_URL}/api/data?user_id=${finalTargetId}`;
-                    
-                    if (!isSilent) document.getElementById("home-loading-text").classList.remove("hidden");
-            
-                    try {
-                        const res = await fetch(url);
-                        if (!res.ok) throw new Error("API 錯誤");
-                        
-                        const result = await res.json();
-                        const records = result.expenses; // SQLite 資料陣列
-            
-                        document.getElementById("home-loading-text").classList.add("hidden");
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initLIFFSafeFlow, 300);
+        });
+
+        // 🚀 平行載入與時差防禦核心
+        async function initLIFFSafeFlow() {
+            try {
+                await liff.init({ liffId: MY_LIFF_ID });
+                if (!liff.isLoggedIn()) { liff.login(); return; }
+
+                const context = liff.getContext();
+                if (context && context.userId) { globalUserId = context.userId; }
+
+                try {
+                    const profile = await liff.getProfile();
+                    if (profile) {
+                        globalProfile = profile;
+                        if (!globalUserId) globalUserId = profile.userId;
+                    }
+                } catch (pErr) { console.warn("Profile 異步時差阻斷，自動採用 Context 靜態快取"); }
 
                 document.getElementById("confirm-name").innerText = globalProfile.displayName || "雲端財務負責人";
                 document.getElementById("confirm-uid").innerText = `UID: ${globalUserId || 'WebView_Fallback'}`;
@@ -269,6 +283,7 @@
         }
 
         window.finalizeEntry = function() {
+            console.log('[DEBUG] finalizeEntry 執行，isGroupModeSelected =', isGroupModeSelected);
             const inputGroupVal = document.getElementById("input-group-id").value.trim();
             const navContainer = document.getElementById("nav-container");
             const btnNavOrders = document.getElementById("btn-nav-orders");
@@ -277,17 +292,18 @@
             if (isGroupModeSelected) {
                 if (!inputGroupVal) { alert("⚠️ 請確認或輸入群組 ID 代碼！"); return; }
                 finalTargetId = inputGroupVal;
-                
+
                 document.getElementById("mode-badge").innerText = "👥 群組";
                 document.getElementById("mode-badge").className = "text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-medium tracking-wider";
                 document.getElementById("balance-title").innerText = "本月群組總開銷金額";
                 document.getElementById("history-title").innerText = "📑 本月群組即時明細";
                 document.getElementById("user-name").innerText = `${globalProfile.displayName || '群組成員'} (成員)`;
-                
+
+                // 群組模式：擴充導覽列為三標籤
                 navContainer.className = "max-w-md mx-auto grid grid-cols-3 h-16";
                 btnNavOrders.classList.remove("hidden");
                 document.getElementById("state-machine-section").classList.remove("hidden");
-                
+
                 url.searchParams.set('groupId', finalTargetId);
                 url.searchParams.delete('userId');
                 window.history.replaceState({}, '', url.toString());
@@ -298,11 +314,11 @@
                 document.getElementById("balance-title").innerText = "本月收支結餘";
                 document.getElementById("history-title").innerText = "📑 當月即時明細";
                 document.getElementById("user-name").innerText = globalProfile.displayName || "個人帳本主";
-                
+
                 navContainer.className = "max-w-md mx-auto grid grid-cols-2 h-16";
                 btnNavOrders.classList.add("hidden");
                 document.getElementById("state-machine-section").classList.add("hidden");
-                
+
                 url.searchParams.delete('groupId');
                 url.searchParams.set('userId', finalTargetId);
                 window.history.replaceState({}, '', url.toString());
@@ -317,27 +333,33 @@
             document.getElementById("filter-end").value = now.toISOString().split('T')[0];
 
             document.getElementById("confirm-gateway").remove();
-            
-            // 啟動資料流 (API 輪詢)
-            injectRealtimePipeline();
+
+            // 啟動輪詢（取代原本 Firestore 的即時監聽）
+            startPolling();
         }
 
         window.switchPage = function(pageTarget) {
+            console.log('[DEBUG] switchPage 呼叫，pageTarget =', pageTarget, '，此時 isGroupModeSelected =', isGroupModeSelected);
             const pages = { home: 'page-home', manage: 'page-manage', orders: 'page-orders' };
             const btns = { home: 'btn-nav-home', manage: 'btn-nav-manage', orders: 'btn-nav-orders' };
-            
+
             Object.keys(pages).forEach(p => {
                 const pEl = document.getElementById(pages[p]);
                 const bEl = document.getElementById(btns[p]);
                 if (pEl) pEl.classList.add("hidden");
-                if (bEl) bEl.className = "flex flex-col items-center justify-center gap-1 transition text-white/40";
+                if (bEl) {
+                    // 個人模式下「團單核銷」按鈕本來就該保持隱藏，切換頁面時不能把 hidden 洗掉
+                    const shouldStayHidden = (p === 'orders' && !isGroupModeSelected);
+                    bEl.className = "flex flex-col items-center justify-center gap-1 transition text-white/40" + (shouldStayHidden ? " hidden" : "");
+                }
             });
+            console.log('[DEBUG] 迴圈結束後，btn-nav-orders 的 class =', document.getElementById('btn-nav-orders').className);
 
             document.getElementById(pages[pageTarget]).classList.remove("hidden");
             document.getElementById(btns[pageTarget]).className = "flex flex-col items-center justify-center gap-1 transition text-white font-semibold";
 
             if (pageTarget === 'home') {
-                fetchHomeData(); // 切回首頁時立刻更新一次
+                // 首頁靠背景輪詢自動更新，不需手動拉取
             } else if (pageTarget === 'manage') {
                 queryManagedData();
             } else if (pageTarget === 'orders') {
@@ -345,104 +367,87 @@
             }
         }
 
-        // 🔄 建立 API 短輪詢，模擬原本的即時資料流
-        function injectRealtimePipeline() {
-            if (homePollingInterval) clearInterval(homePollingInterval);
-            
-            // 立即執行第一次
-            fetchHomeData();
-            if (isGroupModeSelected) fetchGroupState();
-            
-            // 每 5 秒更新一次 (可依需求調整頻率)
-            homePollingInterval = setInterval(() => {
-                const currentEl = document.getElementById('page-home');
-                if (!currentEl.classList.contains('hidden')) {
-                    fetchHomeData(true);
+        // 🔄 建立輪詢管線（每 POLL_INTERVAL_MS 毫秒重新拉取一次）
+        function startPolling() {
+            if (homePollTimer) clearInterval(homePollTimer);
+            if (statePollTimer) clearInterval(statePollTimer);
+
+            document.getElementById("home-loading-text").classList.remove("hidden");
+
+            const fetchHome = async () => {
+                try {
+                    const now = new Date();
+                    const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+                    const ownerType = isGroupModeSelected ? "group" : "user";
+                    const rows = await apiFetch(`/api/expenses?owner_type=${ownerType}&owner_id=${encodeURIComponent(finalTargetId)}&start=${startOfMonth}`);
+                    renderHomeList(rows);
+                } catch (e) {
+                    console.error("輪詢讀取失敗：", e);
+                } finally {
+                    document.getElementById("home-loading-text").classList.add("hidden");
                 }
-                if (isGroupModeSelected) {
-                    fetchGroupState();
-                }
-            }, 5000);
-        }
+            };
 
-        async function fetchGroupState() {
-            try {
-                const res = await // 新路徑 (對應到我們在 main.py 定義的接口)
-                fetch(`${API_BASE}/api/data?user_id=${userId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    currentGroupState = data.state || 'normal';
-                    refreshStateButtons();
-                }
-            } catch (e) { console.error("獲取群組狀態失敗:", e); }
-        }
+            fetchHome();
+            homePollTimer = setInterval(fetchHome, POLL_INTERVAL_MS);
 
-        async function fetchHomeData(isSilent = false) {
-            const rootCollection = isGroupModeSelected ? "groups" : "users";
-            const now = new Date(); 
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-            if (!isSilent) document.getElementById("home-loading-text").classList.remove("hidden");
-
-            try {
-                const res = await fetch(`${API_BASE_URL}/${rootCollection}/${finalTargetId}/expenses?start=${startOfMonth}`);
-                if (!res.ok) throw new Error("Network response was not ok");
-                const records = await res.json();
-
-                document.getElementById("home-loading-text").classList.add("hidden");
-                let incomeTotal = 0, expenseTotal = 0;
-                let categoryData = {};
-                let listHtml = "";
-
-                if (!records || records.length === 0) {
-                    document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">本月帳本尚無消費明細。</div>`;
-                    renderHomeChart({});
-                    updateHomeTotals(0, 0, 0);
-                    return;
-                }
-
-                // 確保排序為最新的在上面
-                records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-                records.forEach((data) => {
-                    const amt = Number(data.amount) || 0;
-                    const type = data.type || "expense";
-                    const item = data.item || "未命名";
-                    const cat = data.category || "生活雜費";
-                    const creatorName = data.created_by_name ? `by ${data.created_by_name}` : '';
-                    
-                    // 💡 修正點：這裡處理 SQLite 的字串時間，不要用 .toDate()
-                    const dateObj = data.timestamp ? new Date(data.timestamp) : new Date();
-                    const dateStr = `${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-                
-                    const isIncome = type === "income";
-                    if (isIncome) incomeTotal += amt;
-                    else { expenseTotal += amt; categoryData[cat] = (categoryData[cat] || 0) + amt; }
-                
-                    listHtml += `
-                        <div class="flex justify-between items-center pt-4 text-sm first:pt-0 font-mono">
-                            <div class="flex items-center gap-3">
-                                <div class="w-7 h-7 rounded-full ${isIncome ? 'bg-white text-[#0A1128] font-bold' : 'bg-white/10 text-white/80 border border-white/5'} text-[11px] flex items-center justify-center">${isIncome ? '入' : '支'}</div>
-                                <div class="flex flex-col">
-                                    <span class="font-medium text-white/90 tracking-wide">${item} <span class="text-[9px] text-white/30 font-normal">${creatorName}</span></span>
-                                    <span class="text-[10px] text-white/40 mt-0.5">${cat}</span>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <span class="font-bold font-mono ${isIncome ? 'text-white' : 'text-white/60'}">${isIncome ? '+' : '-'} $${amt.toLocaleString()}</span>
-                                <span class="text-white/30 block text-[9px] mt-0.5">${dateStr}</span>
-                            </div>
-                        </div>`;
-                });
-
-                updateHomeTotals(incomeTotal, expenseTotal, incomeTotal - expenseTotal);
-                document.getElementById("home-history-list").innerHTML = listHtml;
-                renderHomeChart(categoryData);
-
-            } catch (err) {
-                console.error("API 請求失敗: ", err);
-                document.getElementById("home-loading-text").classList.add("hidden");
+            if (isGroupModeSelected) {
+                const fetchState = async () => {
+                    try {
+                        const g = await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}`);
+                        currentGroupState = g.state || 'normal';
+                        refreshStateButtons();
+                    } catch (e) { console.error(e); }
+                };
+                fetchState();
+                statePollTimer = setInterval(fetchState, POLL_INTERVAL_MS);
             }
+        }
+
+        function renderHomeList(rows) {
+            let incomeTotal = 0, expenseTotal = 0;
+            let categoryData = {};
+            let listHtml = "";
+
+            if (!rows || rows.length === 0) {
+                document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">本月帳本尚無消費明細。</div>`;
+                renderHomeChart({});
+                updateHomeTotals(0, 0, 0);
+                return;
+            }
+
+            rows.forEach((data) => {
+                const amt = data.amount || 0;
+                const type = data.record_type || "expense";
+                const item = data.item || "未命名";
+                const cat = data.category || "生活雜費";
+                const creatorName = data.created_by_name ? `by ${data.created_by_name}` : '';
+                const dateObj = data.created_at ? new Date(data.created_at) : new Date();
+                const dateStr = `${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+
+                const isIncome = type === "income";
+                if (isIncome) incomeTotal += amt;
+                else { expenseTotal += amt; categoryData[cat] = (categoryData[cat] || 0) + amt; }
+
+                listHtml += `
+                    <div class="flex justify-between items-center pt-4 text-sm first:pt-0 font-mono">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-full ${isIncome ? 'bg-white text-[#0A1128] font-bold' : 'bg-white/10 text-white/80 border border-white/5'} text-[11px] flex items-center justify-center">${isIncome ? '入' : '支'}</div>
+                            <div class="flex flex-col">
+                                <span class="font-medium text-white/90 tracking-wide">${item} <span class="text-[9px] text-white/30 font-normal">${creatorName}</span></span>
+                                <span class="text-[10px] text-white/40 mt-0.5">${cat}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold font-mono ${isIncome ? 'text-white' : 'text-white/60'}">${isIncome ? '+' : '-'} $${amt.toLocaleString()}</span>
+                            <span class="text-white/30 block text-[9px] mt-0.5">${dateStr}</span>
+                        </div>
+                    </div>`;
+            });
+
+            updateHomeTotals(incomeTotal, expenseTotal, incomeTotal - expenseTotal);
+            document.getElementById("home-history-list").innerHTML = listHtml;
+            renderHomeChart(categoryData);
         }
 
         function updateHomeTotals(inc, exp, net) {
@@ -453,17 +458,16 @@
                 document.getElementById("home-totals-row").classList.remove("hidden");
                 document.getElementById("home-total-income").innerText = `+$${inc.toLocaleString()}`;
                 document.getElementById("home-total-expense").innerText = `-$${exp.toLocaleString()}`;
-                document.getElementById("home-net-balance").innerText = `${net >= 0 ? '' : '-'}$$${Math.abs(net).toLocaleString()}`;
+                document.getElementById("home-net-balance").innerText = `${net >= 0 ? '' : '-'}$${Math.abs(net).toLocaleString()}`;
             }
         }
 
-        // ⚙️ 遠端同步切換狀態機 (API)
+        // ⚙️ 遠端同步切換狀態機
         window.updateGroupState = async function(newState) {
             if (!isGroupModeSelected || !finalTargetId) return;
             try {
-                await fetch(`${API_BASE_URL}/groups/${finalTargetId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/state`, {
+                    method: "PATCH",
                     body: JSON.stringify({ state: newState })
                 });
                 currentGroupState = newState;
@@ -484,7 +488,7 @@
             });
         }
 
-        // 🛠️ 進階資料篩選檢索 (API)
+        // 🛠️ 進階資料篩選檢索
         window.queryManagedData = async function() {
             const startVal = document.getElementById("filter-start").value;
             const endVal = document.getElementById("filter-end").value;
@@ -492,61 +496,52 @@
 
             const loadingTxt = document.getElementById("manage-loading-text");
             const manageList = document.getElementById("manage-history-list");
-            
+
             loadingTxt.classList.remove("hidden");
             manageList.innerHTML = "";
 
             try {
-                const startDate = new Date(startVal + "T00:00:00").toISOString();
-                const endDate = new Date(endVal + "T23:59:59").toISOString();
-                const rootCollection = isGroupModeSelected ? "groups" : "users";
-                
+                const ownerType = isGroupModeSelected ? "group" : "user";
+
                 // 📊 如果是群組模式，順便重繪墊付貢獻排行圖
                 if (isGroupModeSelected) {
                     document.getElementById("group-payer-card").classList.remove("hidden");
-                    const allExpRes = await fetch(`${API_BASE_URL}/groups/${finalTargetId}/expenses`);
-                    const allRecords = await allExpRes.json();
-                    
+                    const payerRows = await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/payer-summary`);
                     let payerMap = {}; let totalExp = 0;
-                    allRecords.forEach(data => {
-                        if (data.type !== "income") {
-                            const p = data.created_by_name || "未知成員"; const a = Number(data.amount) || 0;
-                            payerMap[p] = (payerMap[p] || 0) + a; totalExp += a;
-                        }
+                    payerRows.forEach(r => {
+                        const name = r.created_by_name || "未知成員";
+                        payerMap[name] = r.total;
+                        totalExp += r.total;
                     });
                     renderDoughnutChart('payerSettleChart', payerChart, payerMap, v => payerChart = v);
                     let summaryHtml = `<div class="font-bold text-white/40 text-[10px] pb-1 font-mono">💰 歷史累計墊付排行：</div>`;
-                    Object.keys(payerMap).sort((a,b)=>payerMap[b]-payerMap[a]).forEach(p => {
-                        summaryHtml += `<div class="flex justify-between py-1.5 font-mono"><span>🟢 ${p}</span><span class="font-bold">$${payerMap[p].toLocaleString()} (${totalExp > 0 ? ((payerMap[p]/totalExp)*100).toFixed(1) : 0}%)</span></div>`;
+                    Object.keys(payerMap).sort((a, b) => payerMap[b] - payerMap[a]).forEach(p => {
+                        summaryHtml += `<div class="flex justify-between py-1.5 font-mono"><span>🟢 ${p}</span><span class="font-bold">$${payerMap[p].toLocaleString()} (${totalExp > 0 ? ((payerMap[p] / totalExp) * 100).toFixed(1) : 0}%)</span></div>`;
                     });
                     document.getElementById("payer-summary-list").innerHTML = summaryHtml;
                 } else {
                     document.getElementById("group-payer-card").classList.add("hidden");
                 }
 
-                // 組合查詢參數
-                let url = `${API_BASE_URL}/${rootCollection}/${finalTargetId}/expenses?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`;
-                if (typeVal !== "all") url += `&type=${typeVal}`;
-
-                const queryRes = await fetch(url);
-                const queryRecords = await queryRes.json();
+                // 拉取流水帳維護明細
+                let apiUrl = `/api/expenses?owner_type=${ownerType}&owner_id=${encodeURIComponent(finalTargetId)}&start=${startVal}&end=${endVal}`;
+                if (typeVal !== "all") apiUrl += `&record_type=${typeVal}`;
+                const rows = await apiFetch(apiUrl);
 
                 loadingTxt.classList.add("hidden");
                 let listHtml = "";
 
-                if (!queryRecords || queryRecords.length === 0) {
+                if (!rows || rows.length === 0) {
                     manageList.innerHTML = `<div class="text-center py-12 text-white/20 text-xs font-mono">該區間查無任何收支紀錄。</div>`;
                     return;
                 }
-                
-                queryRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-                queryRecords.forEach((data) => {
+                rows.forEach((data) => {
                     const id = data.id;
-                    const amt = Number(data.amount) || 0; const type = data.type || "expense";
+                    const amt = data.amount || 0; const type = data.record_type || "expense";
                     const item = data.item || "未命名"; const cat = data.category || "生活雜費";
                     const creatorName = data.created_by_name ? `[by ${data.created_by_name}]` : '';
-                    const dateObj = data.timestamp ? new Date(data.timestamp) : new Date();
+                    const dateObj = data.created_at ? new Date(data.created_at) : new Date();
                     const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
 
                     const isIncome = type === "income";
@@ -562,8 +557,8 @@
                             <div class="flex items-center gap-3">
                                 <span class="font-bold ${isIncome ? 'text-white' : 'text-white/60'}">${isIncome ? '+' : '-'} $${amt.toLocaleString()}</span>
                                 <div class="flex items-center gap-1 pl-1 border-l border-white/5">
-                                    <button onclick="editRecord('${id}', '${item}', ${amt})" class="w-7 h-7 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition flex items-center justify-center text-xs cursor-pointer">✎</button>
-                                    <button onclick="deleteRecord('${id}', '${item}')" class="w-7 h-7 rounded-lg text-rose-400/40 hover:text-rose-400 hover:bg-rose-500/10 transition flex items-center justify-center text-xs cursor-pointer">🗑️</button>
+                                    <button onclick="editRecord(${id}, '${item}', ${amt})" class="w-7 h-7 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition flex items-center justify-center text-xs cursor-pointer">✎</button>
+                                    <button onclick="deleteRecord(${id}, '${item}')" class="w-7 h-7 rounded-lg text-rose-400/40 hover:text-rose-400 hover:bg-rose-500/10 transition flex items-center justify-center text-xs cursor-pointer">🗑️</button>
                                 </div>
                             </div>
                         </div>`;
@@ -572,32 +567,23 @@
                 manageList.innerHTML = listHtml ? listHtml : `<div class="text-center py-12 text-white/20 text-xs font-mono">無符合項目。</div>`;
             } catch (e) {
                 loadingTxt.classList.add("hidden");
-                manageList.innerHTML = `<div class="text-center py-6 text-rose-400/50 text-xs font-mono">讀取失敗，請確認伺服器與 API 狀態。</div>`;
+                manageList.innerHTML = `<div class="text-center py-6 text-rose-400/50 text-xs font-mono">讀取失敗：${e.message}</div>`;
             }
         }
 
-        // 📋 PAGE 3: 智慧揪團核銷控制台 (API)
+        // 📋 PAGE 3: 智慧揪團核銷控制台 (群組公帳核心)
         async function loadOrdersDashboard() {
             document.getElementById("order-loading-text").classList.remove("hidden");
             try {
-                const ordersRes = await fetch(`${API_BASE_URL}/groups/${finalTargetId}/orders`);
-                const orders = await ordersRes.json();
-                
-                const settlesRes = await fetch(`${API_BASE_URL}/groups/${finalTargetId}/settlements`);
-                const settlePool = await settlesRes.json();
+                const orders = await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/orders`);
 
                 let masterHtml = "";
-                
-                orders.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-
                 orders.forEach((o) => {
-                    const orderId = o.id;
-                    const code = o.order_code; const payer = o.master_payer_name;
+                    const orderId = o.id; const code = o.order_code;
                     const date = o.order_date; const total = o.total_amount || 0;
                     const items = o.items || [];
-
-                    let expected = {}; items.forEach(i => expected[i.buyer] = (expected[i.buyer] || 0) + Number(i.price));
-                    let actual = {}; settlePool.filter(s => s.order_code_ref === code).forEach(s => actual[s.payer_name] = (actual[s.payer_name] || 0) + Number(s.amount));
+                    const expected = o.expected || {};
+                    const actual = o.actual || {};
 
                     let subRowsHtml = "";
                     Object.keys(expected).forEach(person => {
@@ -605,21 +591,21 @@
                         if (paidAmt >= targetAmt) {
                             subRowsHtml += `<div class="flex justify-between py-1 text-emerald-400"><span>🟢 ${person} (已付清)</span><span class="font-mono">$${targetAmt}</span></div>`;
                         } else if (paidAmt > 0) {
-                            subRowsHtml += `<div class="flex justify-between py-1 text-amber-400"><span>🟡 ${person} (已付 $${paidAmt}，欠 ${targetAmt-paidAmt})</span><span class="font-mono">$${targetAmt}</span></div>`;
+                            subRowsHtml += `<div class="flex justify-between py-1 text-amber-400"><span>🟡 ${person} (已付 $${paidAmt}，欠 ${targetAmt - paidAmt})</span><span class="font-mono">$${targetAmt}</span></div>`;
                         } else {
                             subRowsHtml += `<div class="flex justify-between py-1 text-rose-400"><span>🔴 ${person} (未付款)</span><span class="font-mono">$${targetAmt}</span></div>`;
                         }
                     });
 
                     let rawItemsHtml = "";
-                    items.forEach((item, index) => {
+                    items.forEach((item) => {
                         rawItemsHtml += `
                             <div class="flex justify-between items-center bg-[#0A1128]/50 p-2 rounded-xl text-xs font-mono">
-                                <span class="text-white/60"><span class="text-white font-bold">${item.buyer}</span>: ${item.item}</span>
+                                <span class="text-white/60"><span class="text-white font-bold">${item.buyer_name}</span>: ${item.item_name}</span>
                                 <div class="flex items-center gap-2">
                                     <span class="font-mono font-bold text-white/80">$${item.price}</span>
-                                    <button onclick="window.editOrderItem('${orderId}', ${index}, '${item.buyer}', '${item.item}', ${item.price})" class="text-white/30 hover:text-white cursor-pointer">✎</button>
-                                    <button onclick="window.deleteOrderItem('${orderId}', ${index})" class="text-rose-400/30 hover:text-rose-400 cursor-pointer">🗑️</button>
+                                    <button onclick="window.editOrderItem(${item.id}, '${item.buyer_name}', '${item.item_name}', ${item.price})" class="text-white/30 hover:text-white cursor-pointer">✎</button>
+                                    <button onclick="window.deleteOrderItem(${item.id})" class="text-rose-400/30 hover:text-rose-400 cursor-pointer">🗑️</button>
                                 </div>
                             </div>`;
                     });
@@ -634,109 +620,79 @@
                                 </div>
                             <div class="text-right">
                                 <span class="text-sm font-black text-white">$${total.toLocaleString()}</span>
-                                <button onclick="window.deleteOrderMaster('${orderId}', '${code}')" class="block text-[10px] text-rose-400/40 hover:text-rose-400 mt-1 ml-auto cursor-pointer">🗑️ 刪除整單</button>
+                                <button onclick="window.deleteOrderMaster(${orderId}, '${code}')" class="block text-[10px] text-rose-400/40 hover:text-rose-400 mt-1 ml-auto cursor-pointer">🗑️ 刪除整單</button>
                             </div>
-                        </div>
-                        <div class="space-y-1.5">
-                            <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold font-mono">🛒 點單品項調整：</div>
-                            ${rawItemsHtml}
-                        </div>
-                        <div class="bg-[#0A1128]/50 rounded-xl p-3 border border-white/5 text-xs space-y-1 font-mono">
-                            <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold pb-1">📊 成員收欠款實時對帳：</div>
-                            ${subRowsHtml}
-                        </div>
-                    </div>`;
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold font-mono">🛒 點單品項調整：</div>
+                                ${rawItemsHtml}
+                            </div>
+                            <div class="bg-[#0A1128]/50 rounded-xl p-3 border border-white/5 text-xs space-y-1 font-mono">
+                                <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold pb-1">📊 成員收欠款實時對帳：</div>
+                                ${subRowsHtml}
+                            </div>
+                        </div>`;
                 });
 
                 document.getElementById("order-loading-text").classList.add("hidden");
                 document.getElementById("order-master-list").innerHTML = masterHtml ? masterHtml : `<div class="text-center py-6 text-white/20 text-xs font-mono">本群組尚無任何揪團訂單。</div>`;
-            } catch (e) { 
-                console.error(e); 
-                document.getElementById("order-loading-text").classList.add("hidden"); 
-            }
+            } catch (e) { console.error(e); document.getElementById("order-loading-text").classList.add("hidden"); }
         }
 
         // ==========================================
         // 🛠️ REST API CRUD 控制閥
         // ==========================================
-        window.editRecord = async function(docId, currentItem, currentAmount) {
+        window.editRecord = async function(id, currentItem, currentAmount) {
             const newItem = prompt("請輸入修正後的項目名稱:", currentItem); if (!newItem) return;
             const newAmountStr = prompt("請輸入修正後的金額:", currentAmount); if (!newAmountStr) return;
             const newAmount = parseInt(newAmountStr, 10); if (isNaN(newAmount) || newAmount <= 0) { alert("金額錯誤"); return; }
             try {
-                const rootCollection = isGroupModeSelected ? "groups" : "users";
-                await fetch(`${API_BASE_URL}/${rootCollection}/${finalTargetId}/expenses/${docId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                await apiFetch(`/api/expenses/${id}`, {
+                    method: "PATCH",
                     body: JSON.stringify({ item: newItem.trim(), amount: newAmount })
                 });
                 queryManagedData();
-                fetchHomeData(true);
-            } catch (e) { alert("修改失敗"); }
+            } catch (e) { alert("修改失敗：" + e.message); }
         }
 
-        window.deleteRecord = async function(docId, itemTitle) {
+        window.deleteRecord = async function(id, itemTitle) {
             if (confirm(`⚠️ 確定要徹底刪除「${itemTitle}」嗎？`)) {
                 try {
-                    const rootCollection = isGroupModeSelected ? "groups" : "users";
-                    await fetch(`${API_BASE_URL}/${rootCollection}/${finalTargetId}/expenses/${docId}`, {
-                        method: 'DELETE'
-                    });
+                    await apiFetch(`/api/expenses/${id}`, { method: "DELETE" });
                     queryManagedData();
-                    fetchHomeData(true);
-                } catch (e) { alert("刪除失敗"); }
+                } catch (e) { alert("刪除失敗：" + e.message); }
             }
         }
 
-        window.editOrderItem = async function(orderId, index, currentBuyer, currentItem, currentPrice) {
+        window.editOrderItem = async function(itemId, currentBuyer, currentItem, currentPrice) {
             const newBuyer = prompt("請修改點單人姓名:", currentBuyer); if (!newBuyer) return;
             const newItem = prompt("請修改品項名稱:", currentItem); if (!newItem) return;
             const newPriceStr = prompt("請修改品項金額:", currentPrice); if (!newPriceStr) return;
             const newPrice = parseInt(newPriceStr, 10); if (isNaN(newPrice) || newPrice <= 0) return;
             try {
-                // 先取得當前完整訂單資料
-                const res = await fetch(`${API_BASE_URL}/groups/${finalTargetId}/orders/${orderId}`);
-                const orderData = await res.json();
-                
-                orderData.items[index] = { buyer: newBuyer.trim(), item: newItem.trim(), price: newPrice };
-                const newTotal = orderData.items.reduce((acc, i) => acc + Number(i.price), 0);
-                
-                await fetch(`${API_BASE_URL}/groups/${finalTargetId}/orders/${orderId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ items: orderData.items, total_amount: newTotal })
+                await apiFetch(`/api/order-items/${itemId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ buyer_name: newBuyer.trim(), item_name: newItem.trim(), price: newPrice })
                 });
                 loadOrdersDashboard();
-            } catch (e) { alert("微調失敗"); }
+            } catch (e) { alert("微調失敗：" + e.message); }
         }
 
-        window.deleteOrderItem = async function(orderId, index) {
+        window.deleteOrderItem = async function(itemId) {
             if (confirm("⚠️ 確定要刪除這筆訂單內的某個品項嗎？")) {
                 try {
-                    const res = await fetch(`${API_BASE_URL}/groups/${finalTargetId}/orders/${orderId}`);
-                    const orderData = await res.json();
-                    
-                    orderData.items.splice(index, 1);
-                    const newTotal = orderData.items.reduce((acc, i) => acc + Number(i.price), 0);
-                    
-                    await fetch(`${API_BASE_URL}/groups/${finalTargetId}/orders/${orderId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ items: orderData.items, total_amount: newTotal })
-                    });
+                    await apiFetch(`/api/order-items/${itemId}`, { method: "DELETE" });
                     loadOrdersDashboard();
-                } catch (e) { alert("刪除失敗"); }
+                } catch (e) { alert("刪除失敗：" + e.message); }
             }
         }
 
         window.deleteOrderMaster = async function(orderId, code) {
             if (confirm(`⚠️ 確定要將這整整一筆 ＃${code} 揪團訂單徹底刪除嗎？`)) {
                 try {
-                    await fetch(`${API_BASE_URL}/groups/${finalTargetId}/orders/${orderId}`, {
-                        method: 'DELETE'
-                    });
+                    await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/orders/${orderId}`, { method: "DELETE" });
                     loadOrdersDashboard();
-                } catch (e) { alert("刪除失敗"); }
+                } catch (e) { alert("刪除失敗：" + e.message); }
             }
         }
 
