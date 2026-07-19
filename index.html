@@ -83,20 +83,31 @@
                         <span id="home-total-expense" class="text-base font-medium text-white/70 font-mono">-0</span>
                     </div>
                 </div>
-            </section>
-
-             <section id="state-machine-section" class="bg-[#1C2541] rounded-2xl p-5 border border-white/5 shadow-xl space-y-3 hidden">
-                <div class="text-[10px] font-bold text-white/40 tracking-widest uppercase">⚙️ 群組機器人狀態控制機</div>
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="updateGroupState('normal')" id="btn-state-normal" class="py-2.5 text-[11px] font-bold rounded-xl border border-white/5 bg-white/5 text-white/40 transition-all cursor-pointer">常態模式</button>
-                    <button onclick="updateGroupState('order')" id="btn-state-order" class="py-2.5 text-[11px] font-bold rounded-xl border border-white/5 bg-white/5 text-white/40 transition-all cursor-pointer">訂單模式</button>
-                    <button onclick="updateGroupState('settle')" id="btn-state-settle" class="py-2.5 text-[11px] font-bold rounded-xl border border-white/5 bg-white/5 text-white/40 transition-all cursor-pointer">結算模式</button>
+                <div id="home-order-row" class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/10 hidden">
+                    <div>
+                        <span class="text-[10px] text-white/40 block tracking-wider uppercase">一般支出</span>
+                        <span id="home-plain-expense" class="text-base font-medium text-white/70 font-mono">-0</span>
+                    </div>
+                    <div class="border-l border-white/10 pl-4">
+                        <span class="text-[10px] text-white/40 block tracking-wider uppercase">🛒 團購訂單</span>
+                        <span id="home-order-total" class="text-base font-medium text-white/70 font-mono">-0</span>
+                    </div>
                 </div>
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
-                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">支出分類比例</h3>
-                <div class="w-full max-w-[200px] mx-auto"><canvas id="homeExpenseChart"></canvas></div>
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">收支分類比例</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <div class="text-[10px] text-white/40 text-center mb-2 tracking-wider">💸 支出</div>
+                        <div class="w-full max-w-[150px] mx-auto"><canvas id="homeExpenseChart"></canvas></div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-white/40 text-center mb-2 tracking-wider">💰 收入</div>
+                        <div class="w-full max-w-[150px] mx-auto"><canvas id="homeIncomeChart"></canvas></div>
+                    </div>
+                </div>
+                <div id="home-order-note" class="text-[9px] text-white/30 text-center mt-4 hidden">🛒 支出分類已包含本月團購訂單金額</div>
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
@@ -185,17 +196,15 @@
 
         let homeChart = null;
         let payerChart = null;
+        let incomeChart = null;
         let globalUserId = null;
         let globalProfile = { displayName: "雲端帳本主", pictureUrl: "" };
 
         let isGroupModeSelected = false;
-        console.log('[DEBUG] 腳本已載入，初始 isGroupModeSelected =', isGroupModeSelected);
         let finalTargetId = null;
-        let currentGroupState = 'normal';
 
         // 輪詢計時器管理（取代原本 Firestore 的 onSnapshot 監聽指針）
         let homePollTimer = null;
-        let statePollTimer = null;
 
         // ==========================================
         // 🌐 統一的 API 呼叫工具
@@ -283,7 +292,6 @@
         }
 
         window.finalizeEntry = function() {
-            console.log('[DEBUG] finalizeEntry 執行，isGroupModeSelected =', isGroupModeSelected);
             const inputGroupVal = document.getElementById("input-group-id").value.trim();
             const navContainer = document.getElementById("nav-container");
             const btnNavOrders = document.getElementById("btn-nav-orders");
@@ -302,7 +310,6 @@
                 // 群組模式：擴充導覽列為三標籤
                 navContainer.className = "max-w-md mx-auto grid grid-cols-3 h-16";
                 btnNavOrders.classList.remove("hidden");
-                document.getElementById("state-machine-section").classList.remove("hidden");
 
                 url.searchParams.set('groupId', finalTargetId);
                 url.searchParams.delete('userId');
@@ -317,7 +324,6 @@
 
                 navContainer.className = "max-w-md mx-auto grid grid-cols-2 h-16";
                 btnNavOrders.classList.add("hidden");
-                document.getElementById("state-machine-section").classList.add("hidden");
 
                 url.searchParams.delete('groupId');
                 url.searchParams.set('userId', finalTargetId);
@@ -339,7 +345,6 @@
         }
 
         window.switchPage = function(pageTarget) {
-            console.log('[DEBUG] switchPage 呼叫，pageTarget =', pageTarget, '，此時 isGroupModeSelected =', isGroupModeSelected);
             const pages = { home: 'page-home', manage: 'page-manage', orders: 'page-orders' };
             const btns = { home: 'btn-nav-home', manage: 'btn-nav-manage', orders: 'btn-nav-orders' };
 
@@ -353,7 +358,6 @@
                     bEl.className = "flex flex-col items-center justify-center gap-1 transition text-white/40" + (shouldStayHidden ? " hidden" : "");
                 }
             });
-            console.log('[DEBUG] 迴圈結束後，btn-nav-orders 的 class =', document.getElementById('btn-nav-orders').className);
 
             document.getElementById(pages[pageTarget]).classList.remove("hidden");
             document.getElementById(btns[pageTarget]).className = "flex flex-col items-center justify-center gap-1 transition text-white font-semibold";
@@ -370,7 +374,6 @@
         // 🔄 建立輪詢管線（每 POLL_INTERVAL_MS 毫秒重新拉取一次）
         function startPolling() {
             if (homePollTimer) clearInterval(homePollTimer);
-            if (statePollTimer) clearInterval(statePollTimer);
 
             document.getElementById("home-loading-text").classList.remove("hidden");
 
@@ -380,7 +383,17 @@
                     const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
                     const ownerType = isGroupModeSelected ? "group" : "user";
                     const rows = await apiFetch(`/api/expenses?owner_type=${ownerType}&owner_id=${encodeURIComponent(finalTargetId)}&start=${startOfMonth}`);
-                    renderHomeList(rows);
+
+                    let orderTotal = 0;
+                    if (isGroupModeSelected) {
+                        try {
+                            const todayStr = now.toISOString().split('T')[0];
+                            const orders = await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/orders?start=${startOfMonth}&end=${todayStr}`);
+                            orderTotal = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+                        } catch (e) { console.error("團單金額讀取失敗：", e); }
+                    }
+
+                    renderHomeList(rows, orderTotal);
                 } catch (e) {
                     console.error("輪詢讀取失敗：", e);
                 } finally {
@@ -390,33 +403,15 @@
 
             fetchHome();
             homePollTimer = setInterval(fetchHome, POLL_INTERVAL_MS);
-
-            if (isGroupModeSelected) {
-                const fetchState = async () => {
-                    try {
-                        const g = await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}`);
-                        currentGroupState = g.state || 'normal';
-                        refreshStateButtons();
-                    } catch (e) { console.error(e); }
-                };
-                fetchState();
-                statePollTimer = setInterval(fetchState, POLL_INTERVAL_MS);
-            }
         }
 
-        function renderHomeList(rows) {
+        function renderHomeList(rows, orderTotal = 0) {
             let incomeTotal = 0, expenseTotal = 0;
-            let categoryData = {};
+            let expenseCategoryData = {};
+            let incomeCategoryData = {};
             let listHtml = "";
 
-            if (!rows || rows.length === 0) {
-                document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">本月帳本尚無消費明細。</div>`;
-                renderHomeChart({});
-                updateHomeTotals(0, 0, 0);
-                return;
-            }
-
-            rows.forEach((data) => {
+            (rows || []).forEach((data) => {
                 const amt = data.amount || 0;
                 const type = data.record_type || "expense";
                 const item = data.item || "未命名";
@@ -426,8 +421,13 @@
                 const dateStr = `${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
 
                 const isIncome = type === "income";
-                if (isIncome) incomeTotal += amt;
-                else { expenseTotal += amt; categoryData[cat] = (categoryData[cat] || 0) + amt; }
+                if (isIncome) {
+                    incomeTotal += amt;
+                    incomeCategoryData[cat] = (incomeCategoryData[cat] || 0) + amt;
+                } else {
+                    expenseTotal += amt;
+                    expenseCategoryData[cat] = (expenseCategoryData[cat] || 0) + amt;
+                }
 
                 listHtml += `
                     <div class="flex justify-between items-center pt-4 text-sm first:pt-0 font-mono">
@@ -445,47 +445,48 @@
                     </div>`;
             });
 
-            updateHomeTotals(incomeTotal, expenseTotal, incomeTotal - expenseTotal);
-            document.getElementById("home-history-list").innerHTML = listHtml;
-            renderHomeChart(categoryData);
-        }
-
-        function updateHomeTotals(inc, exp, net) {
-            if (isGroupModeSelected) {
-                document.getElementById("home-net-balance").innerText = `$${exp.toLocaleString()}`;
-                document.getElementById("home-totals-row").classList.add("hidden");
+            // 🛒 群組模式：把本月團購訂單金額併入支出分類比例圖（獨立分類，不拆品項）
+            const orderNoteEl = document.getElementById("home-order-note");
+            if (isGroupModeSelected && orderTotal > 0) {
+                expenseCategoryData["🛒 團購訂單"] = (expenseCategoryData["🛒 團購訂單"] || 0) + orderTotal;
+                orderNoteEl.classList.remove("hidden");
             } else {
-                document.getElementById("home-totals-row").classList.remove("hidden");
-                document.getElementById("home-total-income").innerText = `+$${inc.toLocaleString()}`;
-                document.getElementById("home-total-expense").innerText = `-$${exp.toLocaleString()}`;
-                document.getElementById("home-net-balance").innerText = `${net >= 0 ? '' : '-'}$${Math.abs(net).toLocaleString()}`;
+                orderNoteEl.classList.add("hidden");
             }
-        }
 
-        // ⚙️ 遠端同步切換狀態機
-        window.updateGroupState = async function(newState) {
-            if (!isGroupModeSelected || !finalTargetId) return;
-            try {
-                await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/state`, {
-                    method: "PATCH",
-                    body: JSON.stringify({ state: newState })
-                });
-                currentGroupState = newState;
-                refreshStateButtons();
-            } catch (e) { console.error(e); }
-        }
-
-        function refreshStateButtons() {
-            const states = ['normal', 'order', 'settle'];
-            states.forEach(s => {
-                const btn = document.getElementById(`btn-state-${s}`);
-                if (!btn) return;
-                if (currentGroupState === s) {
-                    btn.className = "py-2.5 text-xs font-bold rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 transition-all shadow-md scale-[1.02] cursor-pointer";
-                } else {
-                    btn.className = "py-2.5 text-xs font-bold rounded-xl border border-white/5 bg-white/5 text-white/40 hover:bg-white/[0.05] transition-all cursor-pointer";
+            if (!rows || rows.length === 0) {
+                if (!(isGroupModeSelected && orderTotal > 0)) {
+                    document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">本月帳本尚無消費明細。</div>`;
                 }
-            });
+            }
+            if (listHtml) {
+                document.getElementById("home-history-list").innerHTML = listHtml;
+            } else if (!(isGroupModeSelected && orderTotal > 0)) {
+                document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">本月帳本尚無消費明細。</div>`;
+            }
+
+            updateHomeTotals(incomeTotal, expenseTotal, orderTotal);
+            renderHomeChart(expenseCategoryData);
+            renderIncomeChart(incomeCategoryData);
+        }
+
+        function updateHomeTotals(inc, exp, orderTotal = 0) {
+            document.getElementById("home-totals-row").classList.remove("hidden");
+            document.getElementById("home-total-income").innerText = `+$${inc.toLocaleString()}`;
+            document.getElementById("home-total-expense").innerText = `-$${exp.toLocaleString()}`;
+
+            if (isGroupModeSelected) {
+                // 群組總額 = 一般支出 + 團購訂單金額（不扣收入，維持原本「總開銷」語意）
+                const combined = exp + orderTotal;
+                document.getElementById("home-net-balance").innerText = `$${combined.toLocaleString()}`;
+                document.getElementById("home-order-row").classList.remove("hidden");
+                document.getElementById("home-plain-expense").innerText = `-$${exp.toLocaleString()}`;
+                document.getElementById("home-order-total").innerText = `-$${orderTotal.toLocaleString()}`;
+            } else {
+                const net = inc - exp;
+                document.getElementById("home-net-balance").innerText = `${net >= 0 ? '' : '-'}$${Math.abs(net).toLocaleString()}`;
+                document.getElementById("home-order-row").classList.add("hidden");
+            }
         }
 
         // 🛠️ 進階資料篩選檢索
@@ -713,6 +714,10 @@
                     cutout: '75%'
                 }
             });
+        }
+
+        function renderIncomeChart(categoryData) {
+            renderDoughnutChart('homeIncomeChart', incomeChart, categoryData, v => incomeChart = v);
         }
 
         function renderDoughnutChart(canvasId, chartRef, dataMap, setChartRef) {
