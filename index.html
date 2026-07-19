@@ -6,14 +6,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>記帳米粒 ｜ 監控後台 Beta</title>
+    <title>記帳米粒 ｜ 監控後台</title>
     <script>
-        // 🔄 LINE 內建瀏覽器（WebView）快取修正
-        // ------------------------------------------
-        // LINE 的 WebView 有自己一層快取機制，不完全遵守伺服器的 Cache-Control 標頭，
-        // 導致更新後 LINE 內開啟時仍顯示舊版畫面。這裡讓網址每次進入都帶一個獨一無二的
-        // 版本參數，WebView 看到「不同網址」就無法沿用舊快取，強制重新跟伺服器要最新版本。
-        // 只在網址還沒有 v= 參數時執行一次，避免無限重整。
         (function () {
             if (!location.search.includes('v=')) {
                 var sep = location.search ? '&' : '?';
@@ -94,11 +88,11 @@
                 <div id="home-net-balance" class="text-3xl font-bold mt-1 tracking-tight font-mono">$0</div>
                 <div id="home-totals-row" class="grid grid-cols-2 gap-4 mt-6 pt-5 border-t border-white/10">
                     <div>
-                        <span class="text-[10px] text-white/40 block tracking-wider uppercase">Income 總收入</span>
+                        <span class="text-[10px] text-white/40 block tracking-wider uppercase">總收入</span>
                         <span id="home-total-income" class="text-base font-bold text-white font-mono">+0</span>
                     </div>
                     <div class="border-l border-white/10 pl-4">
-                        <span class="text-[10px] text-white/40 block tracking-wider uppercase">Expense 總支出</span>
+                        <span class="text-[10px] text-white/40 block tracking-wider uppercase">總支出</span>
                         <span id="home-total-expense" class="text-base font-medium text-white/70 font-mono">-0</span>
                     </div>
                 </div>
@@ -152,8 +146,8 @@
                     <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">收支類型</label>
                     <select id="filter-type" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
                         <option value="all">全部類型</option>
-                        <option value="expense">支出 (Expense)</option>
-                        <option value="income">收入 (Income)</option>
+                        <option value="expense">支出</option>
+                        <option value="income">收入</option>
                     </select>
                 </div>
                 <button onclick="queryManagedData()" class="w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase">
@@ -162,13 +156,13 @@
             </section>
 
             <section id="group-payer-card" class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5 space-y-4 hidden">
-                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase">👥 團隊成員墊付總額比例</h3>
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase">👥 群組成員墊付總額比例</h3>
                 <div class="w-full max-w-[180px] mx-auto"><canvas id="payerSettleChart"></canvas></div>
                 <div id="payer-summary-list" class="text-xs space-y-2 border-t border-white/5 pt-3 divide-y divide-white/5"></div>
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
-                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">🛠️ 帳目進階維護控制台 (可更正/刪除)</h3>
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">🛠️ 帳目進階維護 (可更正/刪除)</h3>
                 <div id="manage-loading-text" class="text-center py-8 text-white/30 text-xs tracking-wider hidden">正在檢索資料庫...</div>
                 <div id="manage-history-list" class="space-y-4 divide-y divide-white/5"></div>
             </section>
@@ -640,7 +634,7 @@
 
                 let masterHtml = "";
                 orders.forEach((o) => {
-                    const orderId = o.id; const code = o.order_code;
+                    const orderId = o.id; const code = o.order_code; const orderName = o.order_name;
                     const date = o.order_date; const total = o.total_amount || 0;
                     const items = o.items || [];
                     const expected = o.expected || {};
@@ -677,6 +671,7 @@
                                 <div>
                                     <span class="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-bold">#${code}</span>
                                     <span class="text-xs text-white/40 ml-2">${date}</span>
+                                    ${orderName ? `<div class="text-xs font-bold mt-1 text-white/90">📋 ${orderName}</div>` : ""}
                                     <div class="text-xs font-bold mt-1 text-white/80">💳 墊款人：${o.master_payer_name || '群組成員'}</div>
                                 </div>
                             <div class="text-right">
@@ -739,7 +734,7 @@
                     }
 
                     const aiNote = t.ai_route_summary
-                        ? `<div class="bg-[#0A1128]/50 rounded-xl p-3 border border-white/5 text-[11px] text-white/60"><span class="text-white/30 text-[9px] uppercase tracking-wider block mb-1">🤖 AI建議</span>${t.ai_route_summary}</div>`
+                        ? `<div class="bg-[#0A1128]/50 rounded-xl p-3 border border-white/5 text-[11px] text-white/60"><span class="text-white/30 text-[9px] uppercase tracking-wider block mb-1">🤖 米粒建議</span>${t.ai_route_summary}</div>`
                         : "";
 
                     html += `
