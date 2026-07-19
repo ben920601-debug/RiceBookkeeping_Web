@@ -3,7 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>記帳米粒 ｜ 監控後台</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>記帳米粒 ｜ 監控後台 Beta</title>
+    <script>
+        // 🔄 LINE 內建瀏覽器（WebView）快取修正
+        // ------------------------------------------
+        // LINE 的 WebView 有自己一層快取機制，不完全遵守伺服器的 Cache-Control 標頭，
+        // 導致更新後 LINE 內開啟時仍顯示舊版畫面。這裡讓網址每次進入都帶一個獨一無二的
+        // 版本參數，WebView 看到「不同網址」就無法沿用舊快取，強制重新跟伺服器要最新版本。
+        // 只在網址還沒有 v= 參數時執行一次，避免無限重整。
+        (function () {
+            if (!location.search.includes('v=')) {
+                var sep = location.search ? '&' : '?';
+                location.replace(location.pathname + location.search + sep + 'v=' + Date.now());
+            }
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
