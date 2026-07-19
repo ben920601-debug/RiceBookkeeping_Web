@@ -167,12 +167,32 @@
         </main>
 
         <main id="page-trips" class="max-w-md mx-auto px-6 py-6 space-y-6 hidden">
+            <section class="bg-[#1C2541] rounded-2xl p-5 shadow-xl border border-white/5 space-y-3">
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase flex items-center gap-1.5">
+                    ➕ 新增旅行
+                    <span class="text-[8px] bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded-full font-bold tracking-wider normal-case">Beta</span>
+                </h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">出發時間</label>
+                        <input type="datetime-local" id="trip-new-departure" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">回程時間</label>
+                        <input type="datetime-local" id="trip-new-return" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    </div>
+                </div>
+                <button onclick="window.createTrip()" class="w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase">
+                    🧳 建立旅行
+                </button>
+            </section>
+
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
                 <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-1 flex items-center gap-1.5">
                     🧳 旅行規劃列表
                     <span class="text-[8px] bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded-full font-bold tracking-wider normal-case">Beta</span>
                 </h3>
-                <p class="text-[10px] text-white/40 mb-4">此為只讀檢視，行程內容請於 LINE 對話中用「旅行修改 單號」編輯。</p>
+                <p class="text-[10px] text-white/40 mb-4">可直接在此增減修正行程地點與時間；LINE 對話中的「旅行修改 單號」也會同步生效。</p>
                 <div id="trip-loading-text" class="text-center py-6 text-white/30 text-xs">正在檢索旅行規劃...</div>
                 <div id="trip-list" class="space-y-4"></div>
             </section>
@@ -663,7 +683,7 @@
             } catch (e) { console.error(e); document.getElementById("order-loading-text").classList.add("hidden"); }
         }
 
-        // 🧳 PAGE 4: 旅行規劃列表（BETA，只讀檢視）
+        // 🧳 PAGE 4: 旅行規劃列表（BETA，可增減修正）
         async function loadTripsDashboard() {
             document.getElementById("trip-loading-text").classList.remove("hidden");
             try {
@@ -686,10 +706,15 @@
                     (t.items || []).forEach((it) => {
                         const d = new Date(it.scheduled_at);
                         const dStr = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                        const dtInputVal = it.scheduled_at.slice(0, 16);
                         itemsHtml += `
                             <div class="flex justify-between items-center bg-[#0A1128]/50 p-2 rounded-xl text-xs font-mono">
                                 <span class="text-white/70">${dStr}</span>
-                                <span class="text-white/90">${it.location_name}</span>
+                                <span class="text-white/90 flex-1 px-2 truncate">${it.location_name}</span>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="window.editTripItem(${it.id}, '${dtInputVal}', '${it.location_name.replace(/'/g, "\\'")}')" class="text-white/30 hover:text-white cursor-pointer">✎</button>
+                                    <button onclick="window.deleteTripItem(${it.id})" class="text-rose-400/30 hover:text-rose-400 cursor-pointer">🗑️</button>
+                                </div>
                             </div>`;
                     });
                     if (!itemsHtml) {
@@ -707,10 +732,16 @@
                                     ${statusBadge}${codeBadge}
                                     <div class="text-xs font-bold mt-1 text-white/80">📅 ${depStr} → ${retStr}</div>
                                 </div>
-                                <button onclick="window.deleteTrip(${t.id})" class="text-[10px] text-rose-400/40 hover:text-rose-400 cursor-pointer">🗑️ 刪除</button>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="window.editTripTimes(${t.id}, '${t.departure_at.slice(0, 16)}', '${t.return_at.slice(0, 16)}')" class="text-[10px] text-white/40 hover:text-white cursor-pointer">✎ 時間</button>
+                                    <button onclick="window.deleteTrip(${t.id})" class="text-[10px] text-rose-400/40 hover:text-rose-400 cursor-pointer">🗑️ 刪除</button>
+                                </div>
                             </div>
                             <div class="space-y-1.5">
-                                <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold font-mono">📍 行程地點：</div>
+                                <div class="flex justify-between items-center">
+                                    <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold font-mono">📍 行程地點：</div>
+                                    <button onclick="window.addTripItem(${t.id})" class="text-[10px] text-emerald-400/70 hover:text-emerald-400 cursor-pointer">＋ 新增地點</button>
+                                </div>
                                 ${itemsHtml}
                             </div>
                             ${aiNote}
@@ -718,7 +749,7 @@
                 });
 
                 document.getElementById("trip-loading-text").classList.add("hidden");
-                document.getElementById("trip-list").innerHTML = html ? html : `<div class="text-center py-6 text-white/20 text-xs font-mono">目前尚無任何旅行規劃。請於 LINE 對話輸入「旅行模式」開始規劃。</div>`;
+                document.getElementById("trip-list").innerHTML = html ? html : `<div class="text-center py-6 text-white/20 text-xs font-mono">目前尚無任何旅行規劃。可用上方表單新增，或於 LINE 對話輸入「旅行模式」開始規劃。</div>`;
             } catch (e) {
                 console.error(e);
                 document.getElementById("trip-loading-text").classList.add("hidden");
@@ -726,10 +757,80 @@
             }
         }
 
+        // datetime-local 的值是 "YYYY-MM-DDTHH:MM"，後端需要 "YYYY-MM-DD HH:MM"
+        function toBackendDateTime(localValue) {
+            return localValue.replace("T", " ");
+        }
+
+        window.createTrip = async function() {
+            const depVal = document.getElementById("trip-new-departure").value;
+            const retVal = document.getElementById("trip-new-return").value;
+            if (!depVal || !retVal) { alert("請填寫出發與回程時間"); return; }
+            try {
+                await apiFetch(`/api/trips`, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        owner_type: isGroupModeSelected ? "group" : "user",
+                        owner_id: finalTargetId,
+                        departure_at: toBackendDateTime(depVal),
+                        return_at: toBackendDateTime(retVal)
+                    })
+                });
+                document.getElementById("trip-new-departure").value = "";
+                document.getElementById("trip-new-return").value = "";
+                loadTripsDashboard();
+            } catch (e) { alert("建立失敗：" + e.message); }
+        }
+
+        window.editTripTimes = async function(tripId, currentDep, currentRet) {
+            const newDep = prompt("出發時間 (YYYY-MM-DDTHH:MM)：", currentDep); if (!newDep) return;
+            const newRet = prompt("回程時間 (YYYY-MM-DDTHH:MM)：", currentRet); if (!newRet) return;
+            try {
+                await apiFetch(`/api/trips/${tripId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ departure_at: toBackendDateTime(newDep), return_at: toBackendDateTime(newRet) })
+                });
+                loadTripsDashboard();
+            } catch (e) { alert("修改失敗：" + e.message); }
+        }
+
         window.deleteTrip = async function(tripId) {
             if (confirm("⚠️ 確定要刪除這趟旅行規劃嗎？底下所有行程地點也會一併刪除。")) {
                 try {
                     await apiFetch(`/api/trips/${tripId}`, { method: "DELETE" });
+                    loadTripsDashboard();
+                } catch (e) { alert("刪除失敗：" + e.message); }
+            }
+        }
+
+        window.addTripItem = async function(tripId) {
+            const dt = prompt("到達時間 (YYYY-MM-DDTHH:MM)：", ""); if (!dt) return;
+            const loc = prompt("地點名稱：", ""); if (!loc) return;
+            try {
+                await apiFetch(`/api/trips/${tripId}/items`, {
+                    method: "POST",
+                    body: JSON.stringify({ scheduled_at: toBackendDateTime(dt), location_name: loc.trim() })
+                });
+                loadTripsDashboard();
+            } catch (e) { alert("新增失敗：" + e.message); }
+        }
+
+        window.editTripItem = async function(itemId, currentDt, currentLoc) {
+            const newDt = prompt("到達時間 (YYYY-MM-DDTHH:MM)：", currentDt); if (!newDt) return;
+            const newLoc = prompt("地點名稱：", currentLoc); if (!newLoc) return;
+            try {
+                await apiFetch(`/api/itinerary-items/${itemId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ scheduled_at: toBackendDateTime(newDt), location_name: newLoc.trim() })
+                });
+                loadTripsDashboard();
+            } catch (e) { alert("修改失敗：" + e.message); }
+        }
+
+        window.deleteTripItem = async function(itemId) {
+            if (confirm("⚠️ 確定要刪除這個行程地點嗎？")) {
+                try {
+                    await apiFetch(`/api/itinerary-items/${itemId}`, { method: "DELETE" });
                     loadTripsDashboard();
                 } catch (e) { alert("刪除失敗：" + e.message); }
             }
