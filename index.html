@@ -319,16 +319,25 @@
                 <span class="nav-label text-[10px] font-medium tracking-wider flex items-center gap-1">明細查詢</span>
             </button>
             <button onclick="switchPage('orders')" id="btn-nav-orders" class="flex flex-col items-center justify-center gap-1 transition text-white/40 hidden">
-                <span class="text-base">📋</span>
-                <span class="nav-label text-[10px] font-medium tracking-wider flex items-center gap-1">團單核銷</span>
+                <span class="relative inline-block">
+                    <span class="text-base">📋</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">團單核銷</span>
             </button>
             <button onclick="switchPage('trips')" id="btn-nav-trips" class="flex flex-col items-center justify-center gap-1 transition text-white/40">
-                <span class="text-base">🧳</span>
-                <span class="nav-label text-[10px] font-medium tracking-wider flex items-center gap-1">旅行規劃</span>
+                <span class="relative inline-block">
+                    <span class="text-base">🧳</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">旅行規劃</span>
             </button>
             <button onclick="switchPage('finance')" id="btn-nav-finance" class="flex flex-col items-center justify-center gap-1 transition text-white/40 hidden">
-                <span class="text-base">💰</span>
-                <span class="nav-label text-[10px] font-medium tracking-wider flex items-center gap-1">理財工具</span>
+                <span class="relative inline-block">
+                    <span class="text-base">💰</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">理財工具</span>
             </button>
         </div>
     </footer>
@@ -405,7 +414,7 @@
         function showReloadPrompt() {
             const bar = document.getElementById('marquee-bar');
             const inner = document.getElementById('marquee-text-inner');
-            inner.textContent = '⚙️ 後台設定已更新，請重新整理頁面套用最新內容';
+            inner.textContent = '⚙️ 後台功能狀態已更新（圖示標籤已自動套用最新內容）';
             inner.style.color = '#F87171';
             inner.style.animation = `marquee 14s linear infinite`;
             bar.classList.remove('hidden');
@@ -447,6 +456,9 @@
                 const newStatusesStr = JSON.stringify(s.feature_statuses || {});
                 if (lastFeatureStatusesStr !== null && newStatusesStr !== lastFeatureStatusesStr) {
                     globalFeatureStatuses = s.feature_statuses || {};
+                    applyFeatureBadge("btn-nav-trips", "trips_dashboard");
+                    applyFeatureBadge("btn-nav-orders", "orders_dashboard");
+                    applyFeatureBadge("btn-nav-finance", "finance_dashboard");
                     showReloadPrompt();
                 }
                 lastFeatureStatusesStr = newStatusesStr;
@@ -458,16 +470,15 @@
         // 🚦 依中控台設定的功能狀態，動態幫導覽列圖示加上 Beta／維護中 標籤
         function applyFeatureBadge(btnId, featureKey) {
             const status = globalFeatureStatuses[featureKey];
-            const labelEl = document.querySelector(`#${btnId} .nav-label`);
-            if (!labelEl) return;
-            const existingBadge = labelEl.querySelector('.dyn-feature-badge');
-            if (existingBadge) existingBadge.remove();
+            const anchor = document.querySelector(`#${btnId} .badge-anchor`);
+            if (!anchor) return;
             if (status === 'beta' || status === 'maintenance') {
-                const badge = document.createElement('span');
-                badge.className = 'dyn-feature-badge text-[7px] px-1 py-px rounded-full font-bold leading-none ' +
-                    (status === 'beta' ? 'bg-amber-400/20 text-amber-300' : 'bg-rose-500/20 text-rose-300');
-                badge.textContent = status === 'beta' ? 'Beta' : '維護中';
-                labelEl.appendChild(badge);
+                anchor.className = 'badge-anchor absolute -top-1 -right-2 text-[6px] px-1 py-px rounded-full font-bold leading-none whitespace-nowrap ' +
+                    (status === 'beta' ? 'bg-amber-400 text-[#0A1128]' : 'bg-rose-500 text-white');
+                anchor.textContent = status === 'beta' ? 'Beta' : '維護';
+            } else {
+                anchor.className = 'badge-anchor absolute -top-1 -right-2';
+                anchor.textContent = '';
             }
         }
 
@@ -628,6 +639,7 @@
             // 🚦 依中控台設定套用 Beta／維護中 標籤
             applyFeatureBadge("btn-nav-trips", "trips_dashboard");
             applyFeatureBadge("btn-nav-orders", "orders_dashboard");
+            applyFeatureBadge("btn-nav-finance", "finance_dashboard");
 
             // 啟動輪詢（取代原本 Firestore 的即時監聽）
             startPolling();
