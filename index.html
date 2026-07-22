@@ -84,7 +84,7 @@
         
         <main id="page-home" class="max-w-md mx-auto px-6 py-6 space-y-6">
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5 relative overflow-hidden">
-                <h2 id="balance-title" class="text-[11px] text-white/50 font-medium tracking-widest uppercase">本月收支結餘</h2>
+                <h2 id="balance-title" class="text-[11px] text-white/50 font-medium tracking-widest uppercase">本月收支總和</h2>
                 <div id="home-net-balance" class="text-3xl font-bold mt-1 tracking-tight font-mono">$0</div>
                 <div id="home-totals-row" class="grid grid-cols-2 gap-4 mt-6 pt-5 border-t border-white/10">
                     <div>
@@ -94,6 +94,16 @@
                     <div class="border-l border-white/10 pl-4">
                         <span class="text-[10px] text-white/40 block tracking-wider uppercase">總支出</span>
                         <span id="home-total-expense" class="text-base font-medium text-white/70 font-mono">-0</span>
+                    </div>
+                </div>
+                <div id="home-payment-row" class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/10 hidden">
+                    <div>
+                        <span class="text-[10px] text-white/40 block tracking-wider uppercase">💵 現金支出</span>
+                        <span id="home-cash-expense" class="text-base font-medium text-white/70 font-mono">-0</span>
+                    </div>
+                    <div class="border-l border-white/10 pl-4">
+                        <span id="home-top-payment-label" class="text-[10px] text-white/40 block tracking-wider uppercase truncate">💳 支付工具支出</span>
+                        <span id="home-top-payment-expense" class="text-base font-medium text-white/70 font-mono">-0</span>
                     </div>
                 </div>
                 <div id="home-order-row" class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/10 hidden">
@@ -109,14 +119,14 @@
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
-                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">收支分類比例</h3>
+                <h3 id="charts-title" class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">收支分類比例</h3>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <div class="text-[10px] text-white/40 text-center mb-2 tracking-wider">💸 支出</div>
+                        <div id="chart-left-label" class="text-[10px] text-white/40 text-center mb-2 tracking-wider">💸 支出</div>
                         <div class="w-full max-w-[150px] mx-auto"><canvas id="homeExpenseChart"></canvas></div>
                     </div>
                     <div>
-                        <div class="text-[10px] text-white/40 text-center mb-2 tracking-wider">💰 收入</div>
+                        <div id="chart-right-label" class="text-[10px] text-white/40 text-center mb-2 tracking-wider">💰 收入</div>
                         <div class="w-full max-w-[150px] mx-auto"><canvas id="homeIncomeChart"></canvas></div>
                     </div>
                 </div>
@@ -124,7 +134,7 @@
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
-                <h3 id="history-title" class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">📑 當月即時紀錄</h3>
+                <h3 id="history-title" class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">📑 當日即時明細</h3>
                 <div id="home-loading-text" class="text-center py-4 text-white/30 text-xs hidden">正在加載明細...</div>
                 <div id="home-history-list" class="space-y-4 divide-y divide-white/5"></div>
             </section>
@@ -150,9 +160,20 @@
                         <option value="income">收入</option>
                     </select>
                 </div>
+                <div id="filter-payment-box" class="hidden">
+                    <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">支付方式</label>
+                    <select id="filter-payment" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                        <option value="all">全部支付方式</option>
+                    </select>
+                </div>
                 <button onclick="queryManagedData()" class="w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase">
                     🔍 篩選與檢索數據
                 </button>
+            </section>
+
+            <section id="filter-summary-card" class="bg-[#1C2541] rounded-2xl p-5 shadow-xl border border-white/5 hidden">
+                <span id="filter-summary-label" class="text-[10px] text-white/40 block tracking-wider uppercase">篩選區間總和</span>
+                <span id="filter-summary-total" class="text-2xl font-bold font-mono text-white">$0</span>
             </section>
 
             <section id="group-payer-card" class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5 space-y-4 hidden">
@@ -370,12 +391,15 @@
                 finalTargetId = globalUserId;
                 document.getElementById("mode-badge").innerText = "👤 個人";
                 document.getElementById("mode-badge").className = "text-[9px] bg-white/10 text-white/70 px-2 py-0.5 rounded-full font-medium tracking-wider";
-                document.getElementById("balance-title").innerText = "本月收支結餘";
-                document.getElementById("history-title").innerText = "📑 當月即時明細";
                 document.getElementById("user-name").innerText = globalProfile.displayName || "個人帳本主";
 
                 navContainer.className = "max-w-md mx-auto grid grid-cols-3 h-16";
                 btnNavOrders.classList.add("hidden");
+
+                document.getElementById("balance-title").innerText = "本月收支總和";
+                document.getElementById("history-title").innerText = "📑 當日即時明細";
+                document.getElementById("filter-payment-box").classList.remove("hidden");
+                loadPaymentMethodOptions();
 
                 url.searchParams.delete('groupId');
                 url.searchParams.set('userId', finalTargetId);
@@ -435,19 +459,30 @@
                 try {
                     const now = new Date();
                     const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+                    const todayStr = now.toISOString().split('T')[0];
                     const ownerType = isGroupModeSelected ? "group" : "user";
-                    const rows = await apiFetch(`/api/expenses?owner_type=${ownerType}&owner_id=${encodeURIComponent(finalTargetId)}&start=${startOfMonth}`);
+                    const monthlyRows = await apiFetch(`/api/expenses?owner_type=${ownerType}&owner_id=${encodeURIComponent(finalTargetId)}&start=${startOfMonth}`);
 
                     let orderTotal = 0;
                     if (isGroupModeSelected) {
                         try {
-                            const todayStr = now.toISOString().split('T')[0];
                             const orders = await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/orders?start=${startOfMonth}&end=${todayStr}`);
                             orderTotal = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
                         } catch (e) { console.error("團單金額讀取失敗：", e); }
                     }
 
-                    renderHomeList(rows, orderTotal);
+                    let listRows = monthlyRows;
+                    let paymentSummary = [];
+                    if (!isGroupModeSelected) {
+                        try {
+                            listRows = await apiFetch(`/api/expenses?owner_type=user&owner_id=${encodeURIComponent(finalTargetId)}&start=${todayStr}&end=${todayStr}`);
+                        } catch (e) { console.error("當日明細讀取失敗：", e); }
+                        try {
+                            paymentSummary = await apiFetch(`/api/payment-method-summary?owner_id=${encodeURIComponent(finalTargetId)}&start=${startOfMonth}`);
+                        } catch (e) { console.error("支付工具彙總讀取失敗：", e); }
+                    }
+
+                    renderHomeList(monthlyRows, orderTotal, listRows, paymentSummary);
                 } catch (e) {
                     console.error("輪詢讀取失敗：", e);
                 } finally {
@@ -459,44 +494,20 @@
             homePollTimer = setInterval(fetchHome, POLL_INTERVAL_MS);
         }
 
-        function renderHomeList(rows, orderTotal = 0) {
+        function renderHomeList(monthlyRows, orderTotal = 0, listRows = null, paymentSummary = []) {
             let incomeTotal = 0, expenseTotal = 0;
             let expenseCategoryData = {};
-            let incomeCategoryData = {};
-            let listHtml = "";
 
-            (rows || []).forEach((data) => {
+            (monthlyRows || []).forEach((data) => {
                 const amt = data.amount || 0;
-                const type = data.record_type || "expense";
-                const item = data.item || "未命名";
-                const cat = data.category || "生活雜費";
-                const creatorName = data.created_by_name ? `by ${data.created_by_name}` : '';
-                const dateObj = data.created_at ? new Date(data.created_at) : new Date();
-                const dateStr = `${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-
-                const isIncome = type === "income";
+                const isIncome = (data.record_type || "expense") === "income";
+                const cat = data.category || "其他";
                 if (isIncome) {
                     incomeTotal += amt;
-                    incomeCategoryData[cat] = (incomeCategoryData[cat] || 0) + amt;
                 } else {
                     expenseTotal += amt;
                     expenseCategoryData[cat] = (expenseCategoryData[cat] || 0) + amt;
                 }
-
-                listHtml += `
-                    <div class="flex justify-between items-center pt-4 text-sm first:pt-0 font-mono">
-                        <div class="flex items-center gap-3">
-                            <div class="w-7 h-7 rounded-full ${isIncome ? 'bg-white text-[#0A1128] font-bold' : 'bg-white/10 text-white/80 border border-white/5'} text-[11px] flex items-center justify-center">${isIncome ? '入' : '支'}</div>
-                            <div class="flex flex-col">
-                                <span class="font-medium text-white/90 tracking-wide">${item} <span class="text-[9px] text-white/30 font-normal">${creatorName}</span></span>
-                                <span class="text-[10px] text-white/40 mt-0.5">${cat}</span>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="font-bold font-mono ${isIncome ? 'text-white' : 'text-white/60'}">${isIncome ? '+' : '-'} $${amt.toLocaleString()}</span>
-                            <span class="text-white/30 block text-[9px] mt-0.5">${dateStr}</span>
-                        </div>
-                    </div>`;
             });
 
             // 🛒 群組模式：把本月團購訂單金額併入支出分類比例圖（獨立分類，不拆品項）
@@ -508,23 +519,59 @@
                 orderNoteEl.classList.add("hidden");
             }
 
-            if (!rows || rows.length === 0) {
-                if (!(isGroupModeSelected && orderTotal > 0)) {
-                    document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">本月帳本尚無消費明細。</div>`;
-                }
-            }
+            // 📑 清單顯示：個人版用「當日」明細(listRows)，群組版沿用本月明細
+            const rowsForList = listRows !== null ? listRows : monthlyRows;
+            let listHtml = "";
+            (rowsForList || []).forEach((data) => {
+                const amt = data.amount || 0;
+                const isIncome = (data.record_type || "expense") === "income";
+                const item = data.item || "未命名";
+                const cat = data.category || "其他";
+                const creatorName = data.created_by_name ? `by ${data.created_by_name}` : '';
+                const dateObj = data.created_at ? new Date(data.created_at) : new Date();
+                const timeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+                const pm = data.payment_method ? `｜${data.payment_method}` : '';
+
+                listHtml += `
+                    <div class="flex justify-between items-center pt-4 text-sm first:pt-0 font-mono">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-full ${isIncome ? 'bg-white text-[#0A1128] font-bold' : 'bg-white/10 text-white/80 border border-white/5'} text-[11px] flex items-center justify-center">${isIncome ? '入' : '支'}</div>
+                            <div class="flex flex-col">
+                                <span class="font-medium text-white/90 tracking-wide">${item} <span class="text-[9px] text-white/30 font-normal">${creatorName}</span></span>
+                                <span class="text-[10px] text-white/40 mt-0.5">${cat}${pm}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold font-mono ${isIncome ? 'text-white' : 'text-white/60'}">${isIncome ? '+' : '-'} $${amt.toLocaleString()}</span>
+                            <span class="text-white/30 block text-[9px] mt-0.5">${timeStr}</span>
+                        </div>
+                    </div>`;
+            });
+
+            const emptyText = (listRows !== null) ? "今日尚無任何消費明細。" : "本月帳本尚無消費明細。";
             if (listHtml) {
                 document.getElementById("home-history-list").innerHTML = listHtml;
             } else if (!(isGroupModeSelected && orderTotal > 0)) {
-                document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">本月帳本尚無消費明細。</div>`;
+                document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">${emptyText}</div>`;
             }
 
-            updateHomeTotals(incomeTotal, expenseTotal, orderTotal);
+            updateHomeTotals(incomeTotal, expenseTotal, orderTotal, paymentSummary);
             renderHomeChart(expenseCategoryData);
-            renderIncomeChart(incomeCategoryData);
+
+            if (isGroupModeSelected) {
+                document.getElementById("charts-title").textContent = "收支分類比例";
+                document.getElementById("chart-right-label").textContent = "💰 收入";
+                renderIncomeChart({});
+            } else {
+                document.getElementById("charts-title").textContent = "支出與支付工具比例";
+                document.getElementById("chart-right-label").textContent = "💳 支付工具";
+                const paymentChartData = {};
+                (paymentSummary || []).forEach(p => { if (p.total > 0) paymentChartData[p.payment_method || "現金"] = p.total; });
+                renderIncomeChart(paymentChartData);
+            }
         }
 
-        function updateHomeTotals(inc, exp, orderTotal = 0) {
+        function updateHomeTotals(inc, exp, orderTotal = 0, paymentSummary = []) {
             document.getElementById("home-totals-row").classList.remove("hidden");
             document.getElementById("home-total-income").innerText = `+$${inc.toLocaleString()}`;
             document.getElementById("home-total-expense").innerText = `-$${exp.toLocaleString()}`;
@@ -534,13 +581,42 @@
                 const combined = exp + orderTotal;
                 document.getElementById("home-net-balance").innerText = `$${combined.toLocaleString()}`;
                 document.getElementById("home-order-row").classList.remove("hidden");
+                document.getElementById("home-payment-row").classList.add("hidden");
                 document.getElementById("home-plain-expense").innerText = `-$${exp.toLocaleString()}`;
                 document.getElementById("home-order-total").innerText = `-$${orderTotal.toLocaleString()}`;
             } else {
                 const net = inc - exp;
                 document.getElementById("home-net-balance").innerText = `${net >= 0 ? '' : '-'}$${Math.abs(net).toLocaleString()}`;
                 document.getElementById("home-order-row").classList.add("hidden");
+
+                // 💵 現金支出／💳 使用率最高的支付工具（現金以外）
+                document.getElementById("home-payment-row").classList.remove("hidden");
+                const cash = (paymentSummary || []).find(p => (p.payment_method || "現金") === "現金");
+                document.getElementById("home-cash-expense").innerText = `-$${(cash ? cash.total : 0).toLocaleString()}`;
+
+                const topTool = (paymentSummary || []).filter(p => (p.payment_method || "現金") !== "現金").sort((a, b) => b.total - a.total)[0];
+                if (topTool) {
+                    document.getElementById("home-top-payment-label").textContent = `💳 ${topTool.payment_method}`;
+                    document.getElementById("home-top-payment-expense").innerText = `-$${topTool.total.toLocaleString()}`;
+                } else {
+                    document.getElementById("home-top-payment-label").textContent = "💳 支付工具支出";
+                    document.getElementById("home-top-payment-expense").innerText = "-$0";
+                }
             }
+        }
+
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        async function loadPaymentMethodOptions() {
+            try {
+                const methods = await apiFetch(`/api/payment-methods?owner_id=${encodeURIComponent(finalTargetId)}`);
+                const select = document.getElementById("filter-payment");
+                select.innerHTML = `<option value="all">全部支付方式</option><option value="現金">現金</option>` +
+                    methods.map(m => `<option value="${escapeHtml(m.method_name)}">${escapeHtml(m.method_name)}</option>`).join("");
+            } catch (e) { console.error("支付方式清單讀取失敗：", e); }
         }
 
         // 🛠️ 進階資料篩選檢索
@@ -548,9 +624,11 @@
             const startVal = document.getElementById("filter-start").value;
             const endVal = document.getElementById("filter-end").value;
             const typeVal = document.getElementById("filter-type").value;
+            const paymentVal = isGroupModeSelected ? "all" : document.getElementById("filter-payment").value;
 
             const loadingTxt = document.getElementById("manage-loading-text");
             const manageList = document.getElementById("manage-history-list");
+            const summaryCard = document.getElementById("filter-summary-card");
 
             loadingTxt.classList.remove("hidden");
             manageList.innerHTML = "";
@@ -581,7 +659,18 @@
                 // 拉取流水帳維護明細
                 let apiUrl = `/api/expenses?owner_type=${ownerType}&owner_id=${encodeURIComponent(finalTargetId)}&start=${startVal}&end=${endVal}`;
                 if (typeVal !== "all") apiUrl += `&record_type=${typeVal}`;
+                if (paymentVal !== "all") apiUrl += `&payment_method=${encodeURIComponent(paymentVal)}`;
                 const rows = await apiFetch(apiUrl);
+
+                // 💳 選定特定支付方式時，上方顯示這個類型目前的總和
+                if (!isGroupModeSelected && paymentVal !== "all") {
+                    const total = (rows || []).filter(r => (r.record_type || "expense") === "expense").reduce((s, r) => s + (r.amount || 0), 0);
+                    document.getElementById("filter-summary-label").textContent = `💳 ${paymentVal} 支付總和（篩選區間）`;
+                    document.getElementById("filter-summary-total").textContent = `$${total.toLocaleString()}`;
+                    summaryCard.classList.remove("hidden");
+                } else {
+                    summaryCard.classList.add("hidden");
+                }
 
                 loadingTxt.classList.add("hidden");
                 let listHtml = "";
