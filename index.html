@@ -34,6 +34,14 @@
         </div>
     </div>
 
+    <div id="member-picker-modal" class="fixed inset-0 z-[70] bg-black/70 hidden flex items-center justify-center px-6">
+        <div class="bg-[#1C2541] border border-white/10 rounded-2xl p-5 max-w-sm w-full max-h-[70vh] overflow-y-auto space-y-2">
+            <h3 id="member-picker-title" class="text-sm font-bold mb-2 text-white/90">選擇成員</h3>
+            <div id="member-picker-list" class="space-y-1.5"></div>
+            <button onclick="closeMemberPicker()" class="w-full mt-3 py-2 text-xs text-white/40 hover:text-white/70 cursor-pointer">取消</button>
+        </div>
+    </div>
+
     <div id="login-gateway" class="fixed inset-0 bg-[#0A1128] z-50 flex flex-col items-center justify-center px-6 transition-opacity duration-300">
         <div class="text-center space-y-4">
             <h1 class="text-xl font-bold tracking-widest">✨ 電鍋小幫手安全驗證</h1>
@@ -945,7 +953,53 @@
         }
 
         // 📋 PAGE 3: 智慧揪團核銷控制台 (群組公帳核心)
+        // 👥 群組成員選擇器：優先用真實 user_id 做下拉選擇，避免手動輸入名字打錯字
+        // 導致核銷對不上人（LINE 對話端的核銷比對是用 buyer_id，不是名字）。
+        let _groupMembersCache = [];
+        let _memberPickerResolve = null;
+
+        async function loadGroupMembersCache() {
+            if (!isGroupModeSelected) { _groupMembersCache = []; return []; }
+            try {
+                _groupMembersCache = await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/members`);
+            } catch (e) {
+                console.error('群組成員清單讀取失敗：', e);
+                _groupMembersCache = [];
+            }
+            return _groupMembersCache;
+        }
+
+        function pickGroupMember(title) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('member-picker-modal');
+                const listEl = document.getElementById('member-picker-list');
+                document.getElementById('member-picker-title').textContent = title;
+                if (!_groupMembersCache.length) {
+                    listEl.innerHTML = `<div class="text-white/30 text-xs py-4 text-center">目前無法取得群組成員清單，請按下方「取消」後改用其他方式輸入。</div>`;
+                } else {
+                    listEl.innerHTML = _groupMembersCache.map(m => `
+                        <button onclick="resolveMemberPicker('${m.user_id}', '${escapeHtml(m.display_name).replace(/'/g, "\\'")}')" class="w-full text-left px-3 py-2.5 rounded-xl bg-[#0A1128]/50 hover:bg-white/10 text-xs text-white/90 cursor-pointer transition">${escapeHtml(m.display_name)}</button>
+                    `).join('');
+                }
+                _memberPickerResolve = resolve;
+                modal.classList.remove('hidden');
+            });
+        }
+
+        window.resolveMemberPicker = function(userId, displayName) {
+            document.getElementById('member-picker-modal').classList.add('hidden');
+            if (_memberPickerResolve) _memberPickerResolve({ user_id: userId, display_name: displayName });
+            _memberPickerResolve = null;
+        }
+
+        window.closeMemberPicker = function() {
+            document.getElementById('member-picker-modal').classList.add('hidden');
+            if (_memberPickerResolve) _memberPickerResolve(null);
+            _memberPickerResolve = null;
+        }
+
         async function loadOrdersDashboard() {
+            await loadGroupMembersCache();
             document.getElementById("order-loading-text").classList.remove("hidden");
             try {
                 const orders = await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/orders`);
@@ -974,10 +1028,10 @@
                     items.forEach((item) => {
                         rawItemsHtml += `
                             <div class="flex justify-between items-center bg-[#0A1128]/50 p-2 rounded-xl text-xs font-mono">
-                                <span class="text-white/60"><span class="text-white font-bold">${item.buyer_name}</span>: ${item.item_name}</span>
+                                <span class="text-white/60"><span class="text-white font-bold">${escapeHtml(item.buyer_name)}</span>: ${escapeHtml(item.item_name)}</span>
                                 <div class="flex items-center gap-2">
                                     <span class="font-mono font-bold text-white/80">$${item.price}</span>
-                                    <button onclick="window.editOrderItem(${item.id}, '${item.buyer_name}', '${item.item_name}', ${item.price})" class="text-white/30 hover:text-white cursor-pointer">✎</button>
+                                    <button onclick="window.editOrderItem(${item.id}, '${item.buyer_id || ''}', '${escapeHtml(item.buyer_name).replace(/'/g, "\\'")}', '${escapeHtml(item.item_name).replace(/'/g, "\\'")}', ${item.price})" class="text-white/30 hover:text-white cursor-pointer">✎</button>
                                     <button onclick="window.deleteOrderItem(${item.id})" class="text-rose-400/30 hover:text-rose-400 cursor-pointer">🗑️</button>
                                 </div>
                             </div>`;
@@ -989,8 +1043,11 @@
                                 <div>
                                     <span class="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-bold">#${code}</span>
                                     <span class="text-xs text-white/40 ml-2">${date}</span>
-                                    ${orderName ? `<div class="text-xs font-bold mt-1 text-white/90">📋 ${orderName}</div>` : ""}
-                                    <div class="text-xs font-bold mt-1 text-white/80">💳 墊款人：${o.master_payer_name || '群組成員'}</div>
+                                    ${orderName ? `<div class="text-xs font-bold mt-1 text-white/90">📋 ${escapeHtml(orderName)}</div>` : ""}
+                                    <div class="text-xs font-bold mt-1 text-white/80 flex items-center gap-1.5">
+                                        💳 墊款人：${escapeHtml(o.master_payer_name || '群組成員')}
+                                        <button onclick="window.editOrderMasterPayer(${orderId}, '${o.master_payer_id || ''}', '${escapeHtml(o.master_payer_name || '').replace(/'/g, "\\'")}')" class="text-white/30 hover:text-white cursor-pointer text-[10px]">✎</button>
+                                    </div>
                                 </div>
                             <div class="text-right">
                                 <span class="text-sm font-black text-white">$${total.toLocaleString()}</span>
@@ -998,7 +1055,10 @@
                             </div>
                             </div>
                             <div class="space-y-1.5">
-                                <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold font-mono">🛒 點單品項調整：</div>
+                                <div class="flex justify-between items-center">
+                                    <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold font-mono">🛒 點單品項調整：</div>
+                                    <button onclick="window.addOrderItem(${orderId})" class="text-[10px] text-emerald-400/70 hover:text-emerald-400 cursor-pointer">＋ 新增付款人</button>
+                                </div>
                                 ${rawItemsHtml}
                             </div>
                             <div class="bg-[#0A1128]/50 rounded-xl p-3 border border-white/5 text-xs space-y-1 font-mono">
@@ -1403,18 +1463,49 @@
             }
         }
 
-        window.editOrderItem = async function(itemId, currentBuyer, currentItem, currentPrice) {
-            const newBuyer = prompt("請修改點單人姓名:", currentBuyer); if (!newBuyer) return;
+        window.editOrderItem = async function(itemId, currentBuyerId, currentBuyerName, currentItem, currentPrice) {
+            const member = await pickGroupMember(`「${currentItem}」的付款人是誰？`);
+            let buyerId = currentBuyerId, buyerName = currentBuyerName;
+            if (member) { buyerId = member.user_id; buyerName = member.display_name; }
+            // 選擇器取消或抓不到成員清單時，維持原本的人，繼續讓使用者改品項名稱/金額
+
             const newItem = prompt("請修改品項名稱:", currentItem); if (!newItem) return;
             const newPriceStr = prompt("請修改品項金額:", currentPrice); if (!newPriceStr) return;
             const newPrice = parseInt(newPriceStr, 10); if (isNaN(newPrice) || newPrice <= 0) return;
             try {
                 await apiFetch(`/api/order-items/${itemId}`, {
                     method: "PATCH",
-                    body: JSON.stringify({ buyer_name: newBuyer.trim(), item_name: newItem.trim(), price: newPrice })
+                    body: JSON.stringify({ buyer_id: buyerId, buyer_name: buyerName.trim(), item_name: newItem.trim(), price: newPrice })
                 });
                 loadOrdersDashboard();
             } catch (e) { alert("微調失敗：" + e.message); }
+        }
+
+        window.addOrderItem = async function(orderId) {
+            const member = await pickGroupMember("這筆要新增分攤給誰？");
+            if (!member) return;
+            const itemName = prompt("品項名稱：", ""); if (!itemName) return;
+            const priceStr = prompt("金額：", ""); if (!priceStr) return;
+            const price = parseInt(priceStr, 10); if (isNaN(price) || price <= 0) return alert("金額格式錯誤");
+            try {
+                await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/orders/${orderId}/items`, {
+                    method: "POST",
+                    body: JSON.stringify({ buyer_id: member.user_id, buyer_name: member.display_name, item_name: itemName.trim(), price })
+                });
+                loadOrdersDashboard();
+            } catch (e) { alert("新增失敗：" + e.message); }
+        }
+
+        window.editOrderMasterPayer = async function(orderId, currentPayerId, currentPayerName) {
+            const member = await pickGroupMember("這筆團單是誰先墊付的？");
+            if (!member) return;
+            try {
+                await apiFetch(`/api/groups/${encodeURIComponent(finalTargetId)}/orders/${orderId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ master_payer_id: member.user_id, master_payer_name: member.display_name })
+                });
+                loadOrdersDashboard();
+            } catch (e) { alert("修改墊付人失敗：" + e.message); }
         }
 
         window.deleteOrderItem = async function(itemId) {
