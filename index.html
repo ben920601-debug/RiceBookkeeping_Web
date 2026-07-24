@@ -105,6 +105,7 @@
         
         <main id="page-home" class="max-w-md mx-auto px-6 py-6 space-y-6">
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5 relative overflow-hidden">
+                <button id="balance-correction-btn" onclick="window.openBalanceCorrection()" class="hidden absolute top-4 right-4 text-[9px] bg-white/10 hover:bg-white/20 text-white/70 px-2.5 py-1 rounded-full font-bold tracking-wider transition cursor-pointer">⚖️ 校正</button>
                 <h2 id="balance-title" class="text-[11px] text-white/50 font-medium tracking-widest uppercase">本月收支總和</h2>
                 <div id="home-net-balance" class="text-3xl font-bold mt-1 tracking-tight font-mono">$0</div>
                 <div id="home-totals-row" class="grid grid-cols-2 gap-4 mt-6 pt-5 border-t border-white/10">
@@ -140,18 +141,20 @@
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
-                <h3 id="charts-title" class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">收支分類比例</h3>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <div id="chart-left-label" class="text-[10px] text-white/40 text-center mb-2 tracking-wider">💸 支出</div>
-                        <div class="w-full max-w-[150px] mx-auto"><canvas id="homeExpenseChart"></canvas></div>
-                    </div>
-                    <div>
-                        <div id="chart-right-label" class="text-[10px] text-white/40 text-center mb-2 tracking-wider">💰 收入</div>
-                        <div class="w-full max-w-[150px] mx-auto"><canvas id="homeIncomeChart"></canvas></div>
-                    </div>
+                <h3 id="expense-chart-title" class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">💸 支出分類</h3>
+                <div class="grid grid-cols-2 gap-4 items-center">
+                    <div class="w-full max-w-[140px] mx-auto"><canvas id="homeExpenseChart"></canvas></div>
+                    <div id="expense-chart-legend" class="space-y-1.5 text-[10px] font-mono max-h-[150px] overflow-y-auto pr-1"></div>
                 </div>
                 <div id="home-order-note" class="text-[9px] text-white/30 text-center mt-4 hidden">🛒 支出分類已包含本月團購訂單金額</div>
+            </section>
+
+            <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
+                <h3 id="secondary-chart-title" class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">💳 支付工具比例</h3>
+                <div class="grid grid-cols-2 gap-4 items-center">
+                    <div class="w-full max-w-[140px] mx-auto"><canvas id="homeIncomeChart"></canvas></div>
+                    <div id="secondary-chart-legend" class="space-y-1.5 text-[10px] font-mono max-h-[150px] overflow-y-auto pr-1"></div>
+                </div>
             </section>
 
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
@@ -223,7 +226,6 @@
             <section class="bg-[#1C2541] rounded-2xl p-5 shadow-xl border border-white/5 space-y-3">
                 <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase flex items-center gap-1.5">
                     ➕ 新增旅行
-                    <span class="text-[8px] bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded-full font-bold tracking-wider normal-case">Beta</span>
                 </h3>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -243,7 +245,6 @@
             <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
                 <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-1 flex items-center gap-1.5">
                     🧳 旅行規劃列表
-                    <span class="text-[8px] bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded-full font-bold tracking-wider normal-case">Beta</span>
                 </h3>
                 <p class="text-[10px] text-white/40 mb-4">可直接在此增減修正行程地點與時間；LINE 對話中的「旅行修改 單號」也會同步生效。</p>
                 <div id="trip-loading-text" class="text-center py-6 text-white/30 text-xs">正在檢索旅行規劃...</div>
@@ -404,6 +405,7 @@
         });
 
         let globalFeatureStatuses = {};
+        let currentDisplayedNetBalance = 0;
         let lastFeatureStatusesStr = null;
 
         function applyMarquee(s) {
@@ -609,6 +611,7 @@
                 navContainer.className = "max-w-md mx-auto grid grid-cols-4 h-16";
                 btnNavOrders.classList.remove("hidden");
                 btnNavFinance.classList.add("hidden");
+                document.getElementById("balance-correction-btn").classList.add("hidden");
 
                 url.searchParams.set('groupId', finalTargetId);
                 url.searchParams.delete('userId');
@@ -623,6 +626,7 @@
                 navContainer.className = "max-w-md mx-auto grid grid-cols-4 h-16";
                 btnNavOrders.classList.add("hidden");
                 btnNavFinance.classList.remove("hidden");
+                document.getElementById("balance-correction-btn").classList.remove("hidden");
 
                 document.getElementById("balance-title").innerText = "本月收支總和";
                 document.getElementById("history-title").innerText = "📑 當日即時明細";
@@ -796,12 +800,10 @@
             renderHomeChart(expenseCategoryData);
 
             if (isGroupModeSelected) {
-                document.getElementById("charts-title").textContent = "收支分類比例";
-                document.getElementById("chart-right-label").textContent = "💰 收入";
+                document.getElementById("secondary-chart-title").textContent = "💰 收入分類";
                 renderIncomeChart({});
             } else {
-                document.getElementById("charts-title").textContent = "支出與支付工具比例";
-                document.getElementById("chart-right-label").textContent = "💳 支付工具";
+                document.getElementById("secondary-chart-title").textContent = "💳 支付工具比例";
                 const paymentChartData = {};
                 (paymentSummary || []).forEach(p => { if (p.total > 0) paymentChartData[p.payment_method || "現金"] = p.total; });
                 renderIncomeChart(paymentChartData);
@@ -823,6 +825,7 @@
                 document.getElementById("home-order-total").innerText = `-$${orderTotal.toLocaleString()}`;
             } else {
                 const net = inc - exp;
+                currentDisplayedNetBalance = net;
                 document.getElementById("home-net-balance").innerText = `${net >= 0 ? '' : '-'}$${Math.abs(net).toLocaleString()}`;
                 document.getElementById("home-order-row").classList.add("hidden");
 
@@ -1439,6 +1442,43 @@
         }
 
         // ==========================================
+        // ⚖️ 餘額校正（僅監控後台限定，個人版）
+        // ==========================================
+        window.openBalanceCorrection = async function() {
+            const inputStr = prompt(
+                `目前系統算出的本月收支總和是 $${currentDisplayedNetBalance.toLocaleString()}\n\n請輸入您目前實際擁有的金額：`,
+                ""
+            );
+            if (inputStr === null || inputStr.trim() === "") return;
+
+            const actualAmount = parseInt(inputStr.replace(/[,$\s]/g, ""), 10);
+            if (isNaN(actualAmount)) return alert("請輸入有效的數字金額");
+
+            const diff = actualAmount - currentDisplayedNetBalance;
+            if (diff === 0) {
+                alert("✅ 金額相符，不需要校正。");
+                return;
+            }
+
+            const diffType = diff > 0 ? "收入" : "支出";
+            const confirmMsg = diff > 0
+                ? `實際金額比系統多 $${diff.toLocaleString()}\n將記一筆「${diffType}」進行校正，確定嗎？`
+                : `實際金額比系統少 $${Math.abs(diff).toLocaleString()}\n將記一筆「${diffType}」進行校正，確定嗎？`;
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                await apiFetch(`/api/balance-correction`, {
+                    method: "POST",
+                    body: JSON.stringify({ owner_id: finalTargetId, diff_amount: diff, note: "餘額校正" })
+                });
+                alert("✅ 校正完成，已記錄一筆帳。");
+                startPolling();
+            } catch (e) {
+                alert("校正失敗：" + e.message);
+            }
+        }
+
+        // ==========================================
         // 🛠️ REST API CRUD 控制閥
         // ==========================================
         window.editRecord = async function(id, currentItem, currentAmount) {
@@ -1526,44 +1566,78 @@
             }
         }
 
+        const EXPENSE_CHART_COLORS = ['#FFFFFF', '#E2E8F0', '#94A3B8', '#64748B', '#475569', '#334155', '#1E293B', '#0F172A', '#CBD5E1', '#475569'];
+        const SECONDARY_CHART_COLORS = ['#FFFFFF', '#34D399', '#60A5FA', '#FBBF24', '#F87171', '#A78BFA', '#38BDF8', '#FB923C', '#4ADE80', '#F472B6'];
+
+        function renderLegendList(containerId, labels, values, colors) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            if (!labels.length) {
+                el.innerHTML = `<div class="text-white/20 text-center py-6">尚無資料</div>`;
+                return;
+            }
+            const total = values.reduce((a, b) => a + b, 0);
+            el.innerHTML = labels.map((label, i) => {
+                const val = values[i];
+                const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                const color = colors[i % colors.length];
+                return `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${color}"></span>
+                            <span class="text-white/70 truncate">${escapeHtml(label)}</span>
+                        </div>
+                        <span class="text-white/90 font-bold whitespace-nowrap">$${val.toLocaleString()} <span class="text-white/30 font-normal">${pct}%</span></span>
+                    </div>`;
+            }).join('');
+        }
+
         function renderHomeChart(categoryData) {
             const canvasElement = document.getElementById('homeExpenseChart'); if (!canvasElement) return;
-            const ctx = canvasElement.getContext('2d'); const labels = Object.keys(categoryData); const dataValues = Object.values(categoryData);
+            const ctx = canvasElement.getContext('2d');
+            const entries = Object.entries(categoryData).sort((a, b) => b[1] - a[1]);
+            const labels = entries.map(e => e[0]);
+            const dataValues = entries.map(e => e[1]);
             if (homeChart) { homeChart.destroy(); homeChart = null; }
+            renderLegendList('expense-chart-legend', labels, dataValues, EXPENSE_CHART_COLORS);
             if (labels.length === 0) { ctx.clearRect(0, 0, canvasElement.width, canvasElement.height); return; }
             homeChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: labels,
-                    datasets: [{ data: dataValues, backgroundColor: ['#FFFFFF', '#E2E8F0', '#94A3B8', '#475569', '#334155', '#1E293B'], borderWidth: 2, borderColor: '#1C2541' }]
+                    datasets: [{ data: dataValues, backgroundColor: EXPENSE_CHART_COLORS, borderWidth: 2, borderColor: '#1C2541' }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 6, padding: 8, font: { size: 9 }, color: 'rgba(255, 255, 255, 0.4)' } } },
-                    cutout: '75%'
+                    plugins: { legend: { display: false } },
+                    cutout: '70%'
                 }
             });
         }
 
         function renderIncomeChart(categoryData) {
-            renderDoughnutChart('homeIncomeChart', incomeChart, categoryData, v => incomeChart = v);
+            const entries = Object.entries(categoryData).sort((a, b) => b[1] - a[1]);
+            const sortedMap = Object.fromEntries(entries);
+            renderDoughnutChart('homeIncomeChart', incomeChart, sortedMap, v => incomeChart = v, 'secondary-chart-legend', SECONDARY_CHART_COLORS);
         }
 
-        function renderDoughnutChart(canvasId, chartRef, dataMap, setChartRef) {
+        function renderDoughnutChart(canvasId, chartRef, dataMap, setChartRef, legendContainerId, colors) {
             const el = document.getElementById(canvasId); if (!el) return;
             const ctx = el.getContext('2d'); const labels = Object.keys(dataMap); const vals = Object.values(dataMap);
+            const palette = colors || SECONDARY_CHART_COLORS;
             if (chartRef) { chartRef.destroy(); }
+            if (legendContainerId) renderLegendList(legendContainerId, labels, vals, palette);
             if (labels.length === 0) { ctx.clearRect(0, 0, el.width, el.height); return; }
             const newChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: labels,
-                    datasets: [{ data: vals, backgroundColor: ['#FFFFFF', '#34D399', '#60A5FA', '#FBBF24', '#F87171', '#A78BFA'], borderWidth: 2, borderColor: '#1C2541' }]
+                    datasets: [{ data: vals, backgroundColor: palette, borderWidth: 2, borderColor: '#1C2541' }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 6, padding: 6, font: { size: 9 }, color: 'rgba(255, 255, 255, 0.4)' } } },
-                    cutout: '75%'
+                    plugins: { legend: { display: false } },
+                    cutout: '70%'
                 }
             });
             setChartRef(newChart);
