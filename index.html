@@ -27,10 +27,13 @@
 <body class="bg-[#0A1128] text-white font-sans antialiased selection:bg-white/20 pb-24 min-h-screen flex flex-col no-scrollbar">
 
     <div id="maintenance-screen" class="fixed inset-0 bg-[#0A1128] z-[60] flex flex-col items-center justify-center px-6 hidden">
-        <div class="text-center space-y-3">
+        <div class="text-center space-y-3 max-w-xs">
             <div class="text-4xl">🛠️</div>
             <h1 class="text-lg font-bold tracking-widest">監控後台維護中</h1>
             <p class="text-xs text-white/40 tracking-wider">目前暫停開放瀏覽，請稍後再回來查看。</p>
+            <div id="maintenance-marquee" class="hidden mt-5 pt-4 border-t border-white/10">
+                <div id="maintenance-marquee-text" class="text-xs font-bold leading-relaxed"></div>
+            </div>
         </div>
     </div>
 
@@ -354,9 +357,6 @@
     <script>
         // ==========================================
         // ⚙️ API 連線設定
-        // 請視部署狀況修改：若前端與 FastAPI 後端同網域，留空字串即可；
-        // 若後端部署在別的網址（例如 Zeabur / Render），請填入完整網址，
-        // 例如："https://your-backend.zeabur.app"
         // ==========================================
         const API_BASE_URL = "https://ricebookkeeping.ricecook.org";
         // ⚠️ 請改成您 admin-panel（中控台後端）實際的網址，Beta／維護中功能的密碼驗證要呼叫這裡
@@ -411,13 +411,20 @@
         function applyMarquee(s) {
             const bar = document.getElementById('marquee-bar');
             const inner = document.getElementById('marquee-text-inner');
+            const maintBox = document.getElementById('maintenance-marquee');
+            const maintText = document.getElementById('maintenance-marquee-text');
             if (s.marquee_enabled && s.marquee_text) {
                 inner.textContent = s.marquee_text;
                 inner.style.color = s.marquee_color || '#F59E0B';
                 inner.style.animation = `marquee ${s.marquee_speed_seconds || 18}s linear infinite`;
                 bar.classList.remove('hidden');
+
+                maintText.textContent = s.marquee_text;
+                maintText.style.color = s.marquee_color || '#F59E0B';
+                maintBox.classList.remove('hidden');
             } else {
                 bar.classList.add('hidden');
+                maintBox.classList.add('hidden');
             }
         }
 
@@ -438,12 +445,12 @@
                 globalFeatureStatuses = s.feature_statuses || {};
                 lastFeatureStatusesStr = JSON.stringify(globalFeatureStatuses);
 
+                applyMarquee(s); // 先套用跑馬燈，維護畫面裡也看得到公告內容
+
                 if (s.dashboard_enabled === false) {
                     document.getElementById('maintenance-screen').classList.remove('hidden');
                     return false;
                 }
-
-                applyMarquee(s);
                 return true;
             } catch (e) {
                 console.error('監控後台設定讀取失敗，預設當作正常開放：', e);
@@ -456,12 +463,13 @@
             try {
                 const s = await apiFetch('/api/dashboard-settings');
 
+                applyMarquee(s); // 先套用跑馬燈，維護畫面裡也看得到公告內容
+
                 if (s.dashboard_enabled === false) {
                     document.getElementById('maintenance-screen').classList.remove('hidden');
                     return;
                 }
-
-                applyMarquee(s);
+                document.getElementById('maintenance-screen').classList.add('hidden');
 
                 const newStatusesStr = JSON.stringify(s.feature_statuses || {});
                 if (lastFeatureStatusesStr !== null && newStatusesStr !== lastFeatureStatusesStr) {
