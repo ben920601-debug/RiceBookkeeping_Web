@@ -504,7 +504,7 @@
             if (gateUnlockedPages.has(pageTarget)) return true;
 
             const label = status === 'beta' ? 'Beta 測試功能' : '維護中功能';
-            const pwd = prompt(`🔒 這是「${label}」，請輸入密碼才能進入（避免誤觸，密碼與中控台登入密碼相同）：`);
+            const pwd = prompt(`🔒 這是「${label}」，請輸入密碼：`);
             if (pwd === null || pwd === "") return false;
 
             try {
