@@ -159,7 +159,7 @@
         </div>
     </footer>
 
-    <script src="shared.js"></script>
+    <script>document.write('<script src="shared.js?v=' + Date.now() + '"></' + 'script>');</script>
     <script>
         window.addEventListener('DOMContentLoaded', async () => {
             const session = await bootstrapSubPage('finance');
