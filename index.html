@@ -357,6 +357,9 @@
     <script>
         // ==========================================
         // ⚙️ API 連線設定
+        // 請視部署狀況修改：若前端與 FastAPI 後端同網域，留空字串即可；
+        // 若後端部署在別的網址（例如 Zeabur / Render），請填入完整網址，
+        // 例如："https://your-backend.zeabur.app"
         // ==========================================
         const API_BASE_URL = "https://ricebookkeeping.ricecook.org";
         // ⚠️ 請改成您 admin-panel（中控台後端）實際的網址，Beta／維護中功能的密碼驗證要呼叫這裡
@@ -512,7 +515,7 @@
             if (gateUnlockedPages.has(pageTarget)) return true;
 
             const label = status === 'beta' ? 'Beta 測試功能' : '維護中功能';
-            const pwd = prompt(`🔒 這是「${label}」，請輸入密碼：`);
+            const pwd = prompt(`🔒 這是「${label}」，請輸入密碼才能進入（避免誤觸，密碼與中控台登入密碼相同）：`);
             if (pwd === null || pwd === "") return false;
 
             try {
@@ -797,11 +800,11 @@
                     </div>`;
             });
 
-            const emptyText = (listRows !== null) ? "今日尚無任何消費明細。" : "本月帳本尚無消費明細。";
+            const emptyText = (listRows !== null) ? "今日尚無任何消費明細" : "本月帳本尚無消費明細";
             if (listHtml) {
                 document.getElementById("home-history-list").innerHTML = listHtml;
             } else if (!(isGroupModeSelected && orderTotal > 0)) {
-                document.getElementById("home-history-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">${emptyText}</div>`;
+                document.getElementById("home-history-list").innerHTML = catEmptyState(emptyText, "py-6");
             }
 
             updateHomeTotals(incomeTotal, expenseTotal, orderTotal, paymentSummary);
@@ -853,6 +856,13 @@
             }
         }
 
+
+        function catEmptyState(text, sizeClass) {
+            return `<div class="text-center ${sizeClass || 'py-8'} text-white/30 text-xs font-mono">
+                <div class="text-3xl mb-2 select-none">😴🐱</div>
+                <div>${text}</div>
+            </div>`;
+        }
 
         function escapeHtml(str) {
             return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -924,7 +934,7 @@
                 let listHtml = "";
 
                 if (!rows || rows.length === 0) {
-                    manageList.innerHTML = `<div class="text-center py-12 text-white/20 text-xs font-mono">該區間查無任何收支紀錄。</div>`;
+                    manageList.innerHTML = catEmptyState("該區間查無任何收支紀錄", "py-12");
                     return;
                 }
 
@@ -1080,7 +1090,7 @@
                 });
 
                 document.getElementById("order-loading-text").classList.add("hidden");
-                document.getElementById("order-master-list").innerHTML = masterHtml ? masterHtml : `<div class="text-center py-6 text-white/20 text-xs font-mono">本群組尚無任何揪團訂單。</div>`;
+                document.getElementById("order-master-list").innerHTML = masterHtml ? masterHtml : catEmptyState("本群組尚無任何揪團訂單", "py-6");
             } catch (e) { console.error(e); document.getElementById("order-loading-text").classList.add("hidden"); }
         }
 
@@ -1119,7 +1129,7 @@
                             </div>`;
                     });
                     if (!itemsHtml) {
-                        itemsHtml = `<div class="text-center py-3 text-white/20 text-[10px] font-mono">尚未登記任何地點</div>`;
+                        itemsHtml = `<div class="text-center py-3 text-white/20 text-[10px] font-mono">😴 尚未登記任何地點</div>`;
                     }
 
                     const aiNote = t.ai_route_summary
@@ -1150,7 +1160,7 @@
                 });
 
                 document.getElementById("trip-loading-text").classList.add("hidden");
-                document.getElementById("trip-list").innerHTML = html ? html : `<div class="text-center py-6 text-white/20 text-xs font-mono">目前尚無任何旅行規劃。可用上方表單新增，或於 LINE 對話輸入「旅行模式」開始規劃。</div>`;
+                document.getElementById("trip-list").innerHTML = html ? html : catEmptyState("目前尚無任何旅行規劃<br>可用上方表單新增，或於 LINE 對話輸入「旅行模式」開始規劃", "py-6");
             } catch (e) {
                 console.error(e);
                 document.getElementById("trip-loading-text").classList.add("hidden");
@@ -1254,7 +1264,7 @@
                 const bills = await apiFetch(`/api/bills?owner_id=${encodeURIComponent(finalTargetId)}`);
                 loadingEl.classList.add("hidden");
                 if (!bills.length) {
-                    document.getElementById("bill-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">目前沒有登記中的繳費項目。</div>`;
+                    document.getElementById("bill-list").innerHTML = catEmptyState("目前沒有登記中的繳費項目", "py-6");
                     return;
                 }
                 document.getElementById("bill-list").innerHTML = bills.map(b => {
@@ -1338,7 +1348,7 @@
                 const jars = await apiFetch(`/api/savings-jars?owner_id=${encodeURIComponent(finalTargetId)}`);
                 loadingEl.classList.add("hidden");
                 if (!jars.length) {
-                    document.getElementById("jar-list").innerHTML = `<div class="text-center py-6 text-white/20 text-xs font-mono">目前還沒有任何存錢筒。</div>`;
+                    document.getElementById("jar-list").innerHTML = catEmptyState("目前還沒有任何存錢筒", "py-6");
                     return;
                 }
                 document.getElementById("jar-list").innerHTML = jars.map(j => {
@@ -1411,7 +1421,7 @@
                 const methods = await apiFetch(`/api/payment-methods?owner_id=${encodeURIComponent(finalTargetId)}`);
                 loadingEl.classList.add("hidden");
                 if (!methods.length) {
-                    document.getElementById("payment-method-list").innerHTML = `<div class="text-white/20 text-xs font-mono">尚未登記任何支付方式，目前一律歸類為現金。</div>`;
+                    document.getElementById("payment-method-list").innerHTML = catEmptyState("尚未登記任何支付方式，目前一律歸類為現金", "py-6");
                 } else {
                     document.getElementById("payment-method-list").innerHTML = methods.map(m => `
                         <span class="bg-[#0A1128]/50 border border-white/10 rounded-full px-3 py-1.5 text-xs font-mono flex items-center gap-2">
@@ -1581,7 +1591,7 @@
             const el = document.getElementById(containerId);
             if (!el) return;
             if (!labels.length) {
-                el.innerHTML = `<div class="text-white/20 text-center py-6">尚無資料</div>`;
+                el.innerHTML = `<div class="text-white/20 text-center py-6">😴 尚無資料</div>`;
                 return;
             }
             const total = values.reduce((a, b) => a + b, 0);
