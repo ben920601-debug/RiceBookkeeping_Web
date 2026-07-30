@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>旅行規劃 ｜ 記帳米粒監控後台</title>
+    <script>
+        (function () {
+            if (!location.search.includes('v=')) {
+                var sep = location.search ? '&' : '?';
+                location.replace(location.pathname + location.search + sep + 'v=' + Date.now());
+            }
+        })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    </style>
+</head>
+<body class="bg-[#0A1128] text-white font-sans antialiased selection:bg-white/20 pb-24 min-h-screen flex flex-col no-scrollbar">
+
+    <div id="maintenance-screen" class="fixed inset-0 bg-[#0A1128] z-[60] flex flex-col items-center justify-center px-6 hidden">
+        <div class="text-center space-y-3 max-w-xs w-full">
+            <div class="text-4xl">🛠️</div>
+            <h1 class="text-lg font-bold tracking-widest">監控後台維護中</h1>
+            <p class="text-xs text-white/40 tracking-wider">目前暫停開放瀏覽，請稍後再回來查看。</p>
+            <div id="maintenance-marquee" class="hidden mt-5 pt-4 border-t border-white/10">
+                <div id="maintenance-marquee-text" class="text-xs font-bold leading-relaxed"></div>
+            </div>
+            <div class="pt-5 mt-2 border-t border-white/10 space-y-2">
+                <p class="text-[10px] text-white/30 tracking-wider">維護／測試人員可輸入密碼提前進入</p>
+                <div class="flex gap-2">
+                    <input type="password" id="maintenance-password-input" placeholder="密碼" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
+                    <button onclick="window.submitMaintenanceBypass()" class="bg-white text-[#0A1128] font-bold text-xs px-4 rounded-xl hover:bg-white/90 transition cursor-pointer">進入</button>
+                </div>
+                <p id="maintenance-password-error" class="text-[10px] text-rose-400 hidden">❌ 密碼錯誤</p>
+            </div>
+        </div>
+    </div>
+
+    <header class="bg-[#000411]/40 backdrop-blur-md text-white/90 py-4 px-6 border-b border-white/5 sticky top-0 z-30 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+            <span id="user-avatar" class="w-6 h-6 rounded-full bg-white/10 bg-cover bg-center"></span>
+            <span id="user-name" class="text-xs font-bold tracking-wider">載入中...</span>
+            <span id="mode-badge" class="text-[9px] bg-white/10 text-white/70 px-2 py-0.5 rounded-full font-medium tracking-wider">個人模式</span>
+        </div>
+        <span class="text-[9px] text-white/30 tracking-widest uppercase font-semibold flex items-center gap-1.5">
+            RiceBookKeeping
+        </span>
+    </header>
+
+    <div id="marquee-bar" class="w-full overflow-hidden py-1 hidden sticky top-[52px] z-20 bg-[#0A1128]">
+        <div id="marquee-text-inner" class="whitespace-nowrap text-xs font-bold inline-block"></div>
+    </div>
+
+    <div class="flex-1 w-full mx-auto">
+        <main id="page-trips" class="max-w-md mx-auto px-6 py-6 space-y-6 hidden">
+            <section class="bg-[#1C2541] rounded-2xl p-5 shadow-xl border border-white/5 space-y-3">
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase flex items-center gap-1.5">
+                    ➕ 新增旅行
+                </h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">出發時間</label>
+                        <input type="datetime-local" id="trip-new-departure" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">回程時間</label>
+                        <input type="datetime-local" id="trip-new-return" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    </div>
+                </div>
+                <button onclick="window.createTrip()" class="w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase">
+                    🧳 建立旅行
+                </button>
+            </section>
+
+            <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-1 flex items-center gap-1.5">
+                    🧳 旅行規劃列表
+                </h3>
+                <p class="text-[10px] text-white/40 mb-4">可直接在此增減修正行程地點與時間；LINE 對話中的「旅行修改 單號」也會同步生效。</p>
+                <div id="trip-loading-text" class="text-center py-6 text-white/30 text-xs">正在檢索旅行規劃...</div>
+                <div id="trip-list" class="space-y-4"></div>
+            </section>
+        </main>
+    </div>
+
+    <footer class="fixed bottom-0 inset-x-0 bg-[#000411]/80 backdrop-blur-lg border-t border-t-white/5 z-30 pb-safe">
+        <div class="max-w-md mx-auto grid grid-cols-4 h-16">
+            <a href="index.html" id="btn-nav-home" class="flex flex-col items-center justify-center gap-1 transition text-white/40">
+                <span class="text-base">📊</span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">監控首頁</span>
+            </a>
+            <a href="manage.html" id="btn-nav-manage" class="flex flex-col items-center justify-center gap-1 transition text-white/40">
+                <span class="text-base">📑</span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">明細查詢</span>
+            </a>
+            <a href="orders.html" id="btn-nav-orders" class="flex flex-col items-center justify-center gap-1 transition text-white/40 hidden">
+                <span class="relative inline-block">
+                    <span class="text-base">📋</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">團單核銷</span>
+            </a>
+            <a href="trips.html" id="btn-nav-trips" class="flex flex-col items-center justify-center gap-1 transition text-white">
+                <span class="relative inline-block">
+                    <span class="text-base">🧳</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">旅行規劃</span>
+            </a>
+            <a href="finance.html" id="btn-nav-finance" class="flex flex-col items-center justify-center gap-1 transition text-white/40 hidden">
+                <span class="relative inline-block">
+                    <span class="text-base">💰</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">理財工具</span>
+            </a>
+        </div>
+    </footer>
+
+    <script src="shared.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', async () => {
+            const session = await bootstrapSubPage('trips');
+            if (!session) return;
+            loadTripsDashboard();
+        });
+
+        async function loadTripsDashboard() {
+            const session = getSession();
+            document.getElementById("trip-loading-text").classList.remove("hidden");
+            try {
+                const ownerType = session.isGroup ? "group" : "user";
+                const trips = await apiFetch(`/api/trips?owner_type=${ownerType}&owner_id=${encodeURIComponent(session.targetId)}`);
+
+                let html = "";
+                trips.forEach((t) => {
+                    const dep = new Date(t.departure_at);
+                    const ret = new Date(t.return_at);
+                    const depStr = `${dep.getMonth() + 1}/${dep.getDate()} ${String(dep.getHours()).padStart(2, '0')}:${String(dep.getMinutes()).padStart(2, '0')}`;
+                    const retStr = `${ret.getMonth() + 1}/${ret.getDate()} ${String(ret.getHours()).padStart(2, '0')}:${String(ret.getMinutes()).padStart(2, '0')}`;
+                    const isConfirmed = t.status === 'confirmed';
+                    const statusBadge = isConfirmed
+                        ? `<span class="text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-bold">已完成規劃</span>`
+                        : `<span class="text-[9px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold">規劃中</span>`;
+                    const codeBadge = t.trip_code ? `<span class="text-xs font-mono text-white/60 ml-2">#${t.trip_code}</span>` : "";
+
+                    let itemsHtml = "";
+                    (t.items || []).forEach((it) => {
+                        const d = new Date(it.scheduled_at);
+                        const dStr = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                        const dtInputVal = it.scheduled_at.slice(0, 16);
+                        itemsHtml += `
+                            <div class="flex justify-between items-center bg-[#0A1128]/50 p-2 rounded-xl text-xs font-mono">
+                                <span class="text-white/70">${dStr}</span>
+                                <span class="text-white/90 flex-1 px-2 truncate">${it.location_name}</span>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="window.editTripItem(${it.id}, '${dtInputVal}', '${it.location_name.replace(/'/g, "\\'")}')" class="text-white/30 hover:text-white cursor-pointer">✎</button>
+                                    <button onclick="window.deleteTripItem(${it.id})" class="text-rose-400/30 hover:text-rose-400 cursor-pointer">🗑️</button>
+                                </div>
+                            </div>`;
+                    });
+                    if (!itemsHtml) {
+                        itemsHtml = `<div class="text-center py-3 text-white/20 text-[10px] font-mono">😴 尚未登記任何地點</div>`;
+                    }
+
+                    const aiNote = t.ai_route_summary
+                        ? `<div class="bg-[#0A1128]/50 rounded-xl p-3 border border-white/5 text-[11px] text-white/60"><span class="text-white/30 text-[9px] uppercase tracking-wider block mb-1">🤖 米粒建議</span>${t.ai_route_summary}</div>`
+                        : "";
+
+                    html += `
+                        <div class="bg-[#1C2541] border border-white/5 rounded-2xl p-4 space-y-3 shadow-lg">
+                            <div class="flex justify-between items-start border-b border-white/5 pb-2.5 font-mono">
+                                <div>
+                                    ${statusBadge}${codeBadge}
+                                    <div class="text-xs font-bold mt-1 text-white/80">📅 ${depStr} → ${retStr}</div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="window.editTripTimes(${t.id}, '${t.departure_at.slice(0, 16)}', '${t.return_at.slice(0, 16)}')" class="text-[10px] text-white/40 hover:text-white cursor-pointer">✎ 時間</button>
+                                    <button onclick="window.deleteTrip(${t.id})" class="text-[10px] text-rose-400/40 hover:text-rose-400 cursor-pointer">🗑️ 刪除</button>
+                                </div>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between items-center">
+                                    <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold font-mono">📍 行程地點：</div>
+                                    <button onclick="window.addTripItem(${t.id})" class="text-[10px] text-emerald-400/70 hover:text-emerald-400 cursor-pointer">＋ 新增地點</button>
+                                </div>
+                                ${itemsHtml}
+                            </div>
+                            ${aiNote}
+                        </div>`;
+                });
+
+                document.getElementById("trip-loading-text").classList.add("hidden");
+                document.getElementById("trip-list").innerHTML = html ? html : catEmptyState("目前尚無任何旅行規劃<br>可用上方表單新增，或於 LINE 對話輸入「旅行模式」開始規劃", "py-6");
+            } catch (e) {
+                console.error(e);
+                document.getElementById("trip-loading-text").classList.add("hidden");
+                document.getElementById("trip-list").innerHTML = `<div class="text-center py-6 text-rose-400/50 text-xs font-mono">讀取失敗：${e.message}</div>`;
+            }
+        }
+
+        // datetime-local 的值是 "YYYY-MM-DDTHH:MM"，後端需要 "YYYY-MM-DD HH:MM"
+        function toBackendDateTime(localValue) {
+            return localValue.replace("T", " ");
+        }
+
+        window.createTrip = async function() {
+            const session = getSession();
+            const depVal = document.getElementById("trip-new-departure").value;
+            const retVal = document.getElementById("trip-new-return").value;
+            if (!depVal || !retVal) { alert("請填寫出發與回程時間"); return; }
+            try {
+                await apiFetch(`/api/trips`, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        owner_type: session.isGroup ? "group" : "user",
+                        owner_id: session.targetId,
+                        departure_at: toBackendDateTime(depVal),
+                        return_at: toBackendDateTime(retVal)
+                    })
+                });
+                document.getElementById("trip-new-departure").value = "";
+                document.getElementById("trip-new-return").value = "";
+                loadTripsDashboard();
+            } catch (e) { alert("建立失敗：" + e.message); }
+        }
+
+        window.editTripTimes = async function(tripId, currentDep, currentRet) {
+            const newDep = prompt("出發時間 (YYYY-MM-DDTHH:MM)：", currentDep); if (!newDep) return;
+            const newRet = prompt("回程時間 (YYYY-MM-DDTHH:MM)：", currentRet); if (!newRet) return;
+            try {
+                await apiFetch(`/api/trips/${tripId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ departure_at: toBackendDateTime(newDep), return_at: toBackendDateTime(newRet) })
+                });
+                loadTripsDashboard();
+            } catch (e) { alert("修改失敗：" + e.message); }
+        }
+
+        window.deleteTrip = async function(tripId) {
+            if (confirm("⚠️ 確定要刪除這趟旅行規劃嗎？底下所有行程地點也會一併刪除。")) {
+                try {
+                    await apiFetch(`/api/trips/${tripId}`, { method: "DELETE" });
+                    loadTripsDashboard();
+                } catch (e) { alert("刪除失敗：" + e.message); }
+            }
+        }
+
+        window.addTripItem = async function(tripId) {
+            const dt = prompt("到達時間 (YYYY-MM-DDTHH:MM)：", ""); if (!dt) return;
+            const loc = prompt("地點名稱：", ""); if (!loc) return;
+            try {
+                await apiFetch(`/api/trips/${tripId}/items`, {
+                    method: "POST",
+                    body: JSON.stringify({ scheduled_at: toBackendDateTime(dt), location_name: loc.trim() })
+                });
+                loadTripsDashboard();
+            } catch (e) { alert("新增失敗：" + e.message); }
+        }
+
+        window.editTripItem = async function(itemId, currentDt, currentLoc) {
+            const newDt = prompt("到達時間 (YYYY-MM-DDTHH:MM)：", currentDt); if (!newDt) return;
+            const newLoc = prompt("地點名稱：", currentLoc); if (!newLoc) return;
+            try {
+                await apiFetch(`/api/itinerary-items/${itemId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ scheduled_at: toBackendDateTime(newDt), location_name: newLoc.trim() })
+                });
+                loadTripsDashboard();
+            } catch (e) { alert("修改失敗：" + e.message); }
+        }
+
+        window.deleteTripItem = async function(itemId) {
+            if (confirm("⚠️ 確定要刪除這個行程地點嗎？")) {
+                try {
+                    await apiFetch(`/api/itinerary-items/${itemId}`, { method: "DELETE" });
+                    loadTripsDashboard();
+                } catch (e) { alert("刪除失敗：" + e.message); }
+            }
+        }
+
+        // ==========================================
+        // 💰 PAGE 5: 理財工具（繳費／存錢／支付方式，個人版限定）
+        // ==========================================
+    </script>
+</body>
+</html>

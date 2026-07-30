@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>團單核銷 ｜ 記帳米粒監控後台</title>
+    <script>
+        (function () {
+            if (!location.search.includes('v=')) {
+                var sep = location.search ? '&' : '?';
+                location.replace(location.pathname + location.search + sep + 'v=' + Date.now());
+            }
+        })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    </style>
+</head>
+<body class="bg-[#0A1128] text-white font-sans antialiased selection:bg-white/20 pb-24 min-h-screen flex flex-col no-scrollbar">
+
+    <div id="maintenance-screen" class="fixed inset-0 bg-[#0A1128] z-[60] flex flex-col items-center justify-center px-6 hidden">
+        <div class="text-center space-y-3 max-w-xs w-full">
+            <div class="text-4xl">🛠️</div>
+            <h1 class="text-lg font-bold tracking-widest">監控後台維護中</h1>
+            <p class="text-xs text-white/40 tracking-wider">目前暫停開放瀏覽，請稍後再回來查看。</p>
+            <div id="maintenance-marquee" class="hidden mt-5 pt-4 border-t border-white/10">
+                <div id="maintenance-marquee-text" class="text-xs font-bold leading-relaxed"></div>
+            </div>
+            <div class="pt-5 mt-2 border-t border-white/10 space-y-2">
+                <p class="text-[10px] text-white/30 tracking-wider">維護／測試人員可輸入密碼提前進入</p>
+                <div class="flex gap-2">
+                    <input type="password" id="maintenance-password-input" placeholder="密碼" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
+                    <button onclick="window.submitMaintenanceBypass()" class="bg-white text-[#0A1128] font-bold text-xs px-4 rounded-xl hover:bg-white/90 transition cursor-pointer">進入</button>
+                </div>
+                <p id="maintenance-password-error" class="text-[10px] text-rose-400 hidden">❌ 密碼錯誤</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="member-picker-modal" class="fixed inset-0 z-[70] bg-black/70 hidden flex items-center justify-center px-6">
+        <div class="bg-[#1C2541] border border-white/10 rounded-2xl p-5 max-w-sm w-full max-h-[70vh] overflow-y-auto space-y-2">
+            <h3 id="member-picker-title" class="text-sm font-bold mb-2 text-white/90">選擇成員</h3>
+            <div id="member-picker-list" class="space-y-1.5"></div>
+            <button onclick="closeMemberPicker()" class="w-full mt-3 py-2 text-xs text-white/40 hover:text-white/70 cursor-pointer">取消</button>
+        </div>
+    </div>
+    <header class="bg-[#000411]/40 backdrop-blur-md text-white/90 py-4 px-6 border-b border-white/5 sticky top-0 z-30 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+            <span id="user-avatar" class="w-6 h-6 rounded-full bg-white/10 bg-cover bg-center"></span>
+            <span id="user-name" class="text-xs font-bold tracking-wider">載入中...</span>
+            <span id="mode-badge" class="text-[9px] bg-white/10 text-white/70 px-2 py-0.5 rounded-full font-medium tracking-wider">個人模式</span>
+        </div>
+        <span class="text-[9px] text-white/30 tracking-widest uppercase font-semibold flex items-center gap-1.5">
+            RiceBookKeeping
+        </span>
+    </header>
+
+    <div id="marquee-bar" class="w-full overflow-hidden py-1 hidden sticky top-[52px] z-20 bg-[#0A1128]">
+        <div id="marquee-text-inner" class="whitespace-nowrap text-xs font-bold inline-block"></div>
+    </div>
+
+    <div class="flex-1 w-full mx-auto">
+        <main id="page-orders" class="max-w-md mx-auto px-6 py-6 space-y-6 hidden">
+            <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-3">🛒 歷史揪團訂單列表</h3>
+                <p class="text-[10px] text-white/40 mb-4">點擊點單品項可直接進行微調修復，下方自動即時勾稽催款明細。</p>
+                <div id="order-loading-text" class="text-center py-6 text-white/30 text-xs">正在檢索群組訂單...</div>
+                <div id="order-master-list" class="space-y-4"></div>
+            </section>
+        </main>
+    </div>
+
+    <footer class="fixed bottom-0 inset-x-0 bg-[#000411]/80 backdrop-blur-lg border-t border-t-white/5 z-30 pb-safe">
+        <div class="max-w-md mx-auto grid grid-cols-4 h-16">
+            <a href="index.html" id="btn-nav-home" class="flex flex-col items-center justify-center gap-1 transition text-white/40">
+                <span class="text-base">📊</span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">監控首頁</span>
+            </a>
+            <a href="manage.html" id="btn-nav-manage" class="flex flex-col items-center justify-center gap-1 transition text-white/40">
+                <span class="text-base">📑</span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">明細查詢</span>
+            </a>
+            <a href="orders.html" id="btn-nav-orders" class="flex flex-col items-center justify-center gap-1 transition text-white hidden">
+                <span class="relative inline-block">
+                    <span class="text-base">📋</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">團單核銷</span>
+            </a>
+            <a href="trips.html" id="btn-nav-trips" class="flex flex-col items-center justify-center gap-1 transition text-white/40">
+                <span class="relative inline-block">
+                    <span class="text-base">🧳</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">旅行規劃</span>
+            </a>
+            <a href="finance.html" id="btn-nav-finance" class="flex flex-col items-center justify-center gap-1 transition text-white/40 hidden">
+                <span class="relative inline-block">
+                    <span class="text-base">💰</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">理財工具</span>
+            </a>
+        </div>
+    </footer>
+
+    <script src="shared.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', async () => {
+            const session = await bootstrapSubPage('orders');
+            if (!session) return;
+            if (!session.isGroup) { window.location.href = 'index.html'; return; }
+            loadOrdersDashboard();
+        });
+
+        async function loadOrdersDashboard() {
+            const session = getSession();
+            await loadGroupMembersCache(session.targetId);
+
+            document.getElementById("order-loading-text").classList.remove("hidden");
+            try {
+                const orders = await apiFetch(`/api/groups/${encodeURIComponent(session.targetId)}/orders`);
+
+                let masterHtml = "";
+                orders.forEach((o) => {
+                    const orderId = o.id; const code = o.order_code; const orderName = o.order_name;
+                    const date = o.order_date; const total = o.total_amount || 0;
+                    const items = o.items || [];
+                    const expected = o.expected || {};
+                    const actual = o.actual || {};
+
+                    let subRowsHtml = "";
+                    Object.keys(expected).forEach(person => {
+                        const targetAmt = expected[person]; const paidAmt = actual[person] || 0;
+                        if (paidAmt >= targetAmt) {
+                            subRowsHtml += `<div class="flex justify-between py-1 text-emerald-400"><span>🟢 ${escapeHtml(person)} (已付清)</span><span class="font-mono">$${targetAmt}</span></div>`;
+                        } else if (paidAmt > 0) {
+                            subRowsHtml += `<div class="flex justify-between py-1 text-amber-400"><span>🟡 ${escapeHtml(person)} (已付 $${paidAmt}，欠 ${targetAmt - paidAmt})</span><span class="font-mono">$${targetAmt}</span></div>`;
+                        } else {
+                            subRowsHtml += `<div class="flex justify-between py-1 text-rose-400"><span>🔴 ${escapeHtml(person)} (未付款)</span><span class="font-mono">$${targetAmt}</span></div>`;
+                        }
+                    });
+                    if (!subRowsHtml) subRowsHtml = `<div class="text-white/20 text-center py-2">尚無分攤品項</div>`;
+
+                    let rawItemsHtml = "";
+                    items.forEach((item) => {
+                        rawItemsHtml += `
+                            <div class="flex justify-between items-center bg-[#0A1128]/50 p-2 rounded-xl text-xs font-mono">
+                                <span class="text-white/60"><span class="text-white font-bold">${escapeHtml(item.buyer_name)}</span>: ${escapeHtml(item.item_name)}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono font-bold text-white/80">$${item.price}</span>
+                                    <button onclick="window.editOrderItem(${item.id}, '${item.buyer_id || ''}', '${escapeHtml(item.buyer_name).replace(/'/g, "\\'")}', '${escapeHtml(item.item_name).replace(/'/g, "\\'")}', ${item.price})" class="text-white/30 hover:text-white cursor-pointer">✎</button>
+                                    <button onclick="window.deleteOrderItem(${item.id})" class="text-rose-400/30 hover:text-rose-400 cursor-pointer">🗑️</button>
+                                </div>
+                            </div>`;
+                    });
+
+                    masterHtml += `
+                        <div class="bg-[#1C2541] border border-white/5 rounded-2xl p-4 space-y-3 shadow-lg">
+                            <div class="flex justify-between items-start border-b border-white/5 pb-2.5 font-mono">
+                                <div>
+                                    <span class="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-bold">#${code}</span>
+                                    <span class="text-xs text-white/40 ml-2">${date}</span>
+                                    ${orderName ? `<div class="text-xs font-bold mt-1 text-white/90">📋 ${escapeHtml(orderName)}</div>` : ""}
+                                    <div class="text-xs font-bold mt-1 text-white/80 flex items-center gap-1.5">
+                                        💳 墊款人：${escapeHtml(o.master_payer_name || '群組成員')}
+                                        <button onclick="window.editOrderMasterPayer(${orderId}, '${o.master_payer_id || ''}', '${escapeHtml(o.master_payer_name || '').replace(/'/g, "\\'")}')" class="text-white/30 hover:text-white cursor-pointer text-[10px]">✎</button>
+                                    </div>
+                                </div>
+                            <div class="text-right">
+                                <span class="text-sm font-black text-white">$${total.toLocaleString()}</span>
+                                <button onclick="window.deleteOrderMaster(${orderId}, '${code}')" class="block text-[10px] text-rose-400/40 hover:text-rose-400 mt-1 ml-auto cursor-pointer">🗑️ 刪除整單</button>
+                            </div>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between items-center">
+                                    <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold font-mono">🛒 點單品項調整：</div>
+                                    <button onclick="window.addOrderItem(${orderId})" class="text-[10px] text-emerald-400/70 hover:text-emerald-400 cursor-pointer">＋ 新增付款人</button>
+                                </div>
+                                ${rawItemsHtml}
+                            </div>
+                            <div class="bg-[#0A1128]/50 rounded-xl p-3 border border-white/5 text-xs space-y-1 font-mono">
+                                <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold pb-1">📊 成員收欠款實時對帳：</div>
+                                ${subRowsHtml}
+                            </div>
+                        </div>`;
+                });
+
+                document.getElementById("order-loading-text").classList.add("hidden");
+                document.getElementById("order-master-list").innerHTML = masterHtml ? masterHtml : catEmptyState("本群組尚無任何揪團訂單", "py-6");
+            } catch (e) { console.error(e); document.getElementById("order-loading-text").classList.add("hidden"); }
+        }
+
+        window.editOrderItem = async function(itemId, currentBuyerId, currentBuyerName, currentItem, currentPrice) {
+            const member = await pickGroupMember(`「${currentItem}」的付款人是誰？`);
+            let buyerId = currentBuyerId, buyerName = currentBuyerName;
+            if (member) { buyerId = member.user_id; buyerName = member.display_name; }
+
+            const newItem = prompt("請修改品項名稱:", currentItem); if (!newItem) return;
+            const newPriceStr = prompt("請修改品項金額:", currentPrice); if (!newPriceStr) return;
+            const newPrice = parseInt(newPriceStr, 10); if (isNaN(newPrice) || newPrice <= 0) return;
+            try {
+                await apiFetch(`/api/order-items/${itemId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ buyer_id: buyerId, buyer_name: buyerName.trim(), item_name: newItem.trim(), price: newPrice })
+                });
+                loadOrdersDashboard();
+            } catch (e) { alert("微調失敗：" + e.message); }
+        }
+
+        window.addOrderItem = async function(orderId) {
+            const session = getSession();
+            const member = await pickGroupMember("這筆要新增分攤給誰？");
+            if (!member) return;
+            const itemName = prompt("品項名稱：", ""); if (!itemName) return;
+            const priceStr = prompt("金額：", ""); if (!priceStr) return;
+            const price = parseInt(priceStr, 10); if (isNaN(price) || price <= 0) return alert("金額格式錯誤");
+            try {
+                await apiFetch(`/api/groups/${encodeURIComponent(session.targetId)}/orders/${orderId}/items`, {
+                    method: "POST",
+                    body: JSON.stringify({ buyer_id: member.user_id, buyer_name: member.display_name, item_name: itemName.trim(), price })
+                });
+                loadOrdersDashboard();
+            } catch (e) { alert("新增失敗：" + e.message); }
+        }
+
+        window.editOrderMasterPayer = async function(orderId, currentPayerId, currentPayerName) {
+            const session = getSession();
+            const member = await pickGroupMember("這筆團單是誰先墊付的？");
+            if (!member) return;
+            try {
+                await apiFetch(`/api/groups/${encodeURIComponent(session.targetId)}/orders/${orderId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ master_payer_id: member.user_id, master_payer_name: member.display_name })
+                });
+                loadOrdersDashboard();
+            } catch (e) { alert("修改墊付人失敗：" + e.message); }
+        }
+
+        window.deleteOrderItem = async function(itemId) {
+            if (confirm("⚠️ 確定要刪除這個品項嗎？")) {
+                try {
+                    await apiFetch(`/api/order-items/${itemId}`, { method: "DELETE" });
+                    loadOrdersDashboard();
+                } catch (e) { alert("刪除失敗：" + e.message); }
+            }
+        }
+
+        window.deleteOrderMaster = async function(orderId, code) {
+            const session = getSession();
+            if (confirm(`⚠️ 確定要刪除整張團單 #${code} 嗎？此動作無法復原。`)) {
+                try {
+                    await apiFetch(`/api/groups/${encodeURIComponent(session.targetId)}/orders/${orderId}`, { method: "DELETE" });
+                    loadOrdersDashboard();
+                } catch (e) { alert("刪除失敗：" + e.message); }
+            }
+        }
+    </script>
+</body>
+</html>

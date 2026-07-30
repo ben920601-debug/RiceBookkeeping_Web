@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>明細查詢 ｜ 記帳米粒監控後台</title>
+    <script>
+        (function () {
+            if (!location.search.includes('v=')) {
+                var sep = location.search ? '&' : '?';
+                location.replace(location.pathname + location.search + sep + 'v=' + Date.now());
+            }
+        })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    </style>
+</head>
+<body class="bg-[#0A1128] text-white font-sans antialiased selection:bg-white/20 pb-24 min-h-screen flex flex-col no-scrollbar">
+
+    <div id="maintenance-screen" class="fixed inset-0 bg-[#0A1128] z-[60] flex flex-col items-center justify-center px-6 hidden">
+        <div class="text-center space-y-3 max-w-xs w-full">
+            <div class="text-4xl">🛠️</div>
+            <h1 class="text-lg font-bold tracking-widest">監控後台維護中</h1>
+            <p class="text-xs text-white/40 tracking-wider">目前暫停開放瀏覽，請稍後再回來查看。</p>
+            <div id="maintenance-marquee" class="hidden mt-5 pt-4 border-t border-white/10">
+                <div id="maintenance-marquee-text" class="text-xs font-bold leading-relaxed"></div>
+            </div>
+            <div class="pt-5 mt-2 border-t border-white/10 space-y-2">
+                <p class="text-[10px] text-white/30 tracking-wider">維護／測試人員可輸入密碼提前進入</p>
+                <div class="flex gap-2">
+                    <input type="password" id="maintenance-password-input" placeholder="密碼" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
+                    <button onclick="window.submitMaintenanceBypass()" class="bg-white text-[#0A1128] font-bold text-xs px-4 rounded-xl hover:bg-white/90 transition cursor-pointer">進入</button>
+                </div>
+                <p id="maintenance-password-error" class="text-[10px] text-rose-400 hidden">❌ 密碼錯誤</p>
+            </div>
+        </div>
+    </div>
+
+    <header class="bg-[#000411]/40 backdrop-blur-md text-white/90 py-4 px-6 border-b border-white/5 sticky top-0 z-30 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+            <span id="user-avatar" class="w-6 h-6 rounded-full bg-white/10 bg-cover bg-center"></span>
+            <span id="user-name" class="text-xs font-bold tracking-wider">載入中...</span>
+            <span id="mode-badge" class="text-[9px] bg-white/10 text-white/70 px-2 py-0.5 rounded-full font-medium tracking-wider">個人模式</span>
+        </div>
+        <span class="text-[9px] text-white/30 tracking-widest uppercase font-semibold flex items-center gap-1.5">
+            RiceBookKeeping
+        </span>
+    </header>
+
+    <div id="marquee-bar" class="w-full overflow-hidden py-1 hidden sticky top-[52px] z-20 bg-[#0A1128]">
+        <div id="marquee-text-inner" class="whitespace-nowrap text-xs font-bold inline-block"></div>
+    </div>
+
+    <div class="flex-1 w-full mx-auto">
+        <main id="page-manage" class="max-w-md mx-auto px-6 py-6 space-y-6 hidden">
+            <section class="bg-[#1C2541] rounded-2xl p-5 shadow-xl border border-white/5 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">起始日期</label>
+                        <input type="date" id="filter-start" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">結束日期</label>
+                        <input type="date" id="filter-end" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">收支類型</label>
+                    <select id="filter-type" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                        <option value="all">全部類型</option>
+                        <option value="expense">支出</option>
+                        <option value="income">收入</option>
+                    </select>
+                </div>
+                <div id="filter-payment-box" class="hidden">
+                    <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">支付方式</label>
+                    <select id="filter-payment" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                        <option value="all">全部支付方式</option>
+                    </select>
+                </div>
+                <button onclick="queryManagedData()" class="w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase">
+                    🔍 篩選與檢索數據
+                </button>
+            </section>
+
+            <section id="filter-summary-card" class="bg-[#1C2541] rounded-2xl p-5 shadow-xl border border-white/5 hidden">
+                <span id="filter-summary-label" class="text-[10px] text-white/40 block tracking-wider uppercase">篩選區間總和</span>
+                <span id="filter-summary-total" class="text-2xl font-bold font-mono text-white">$0</span>
+            </section>
+
+            <section id="group-payer-card" class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5 space-y-4 hidden">
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase">👥 群組成員墊付總額比例</h3>
+                <div class="w-full max-w-[180px] mx-auto"><canvas id="payerSettleChart"></canvas></div>
+                <div id="payer-summary-list" class="text-xs space-y-2 border-t border-white/5 pt-3 divide-y divide-white/5"></div>
+            </section>
+
+            <section class="bg-[#1C2541] rounded-2xl p-6 shadow-xl border border-white/5">
+                <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase mb-4">🛠️ 帳目進階維護 (可更正/刪除)</h3>
+                <div id="manage-loading-text" class="text-center py-8 text-white/30 text-xs tracking-wider hidden">正在檢索資料庫...</div>
+                <div id="manage-history-list" class="space-y-4 divide-y divide-white/5"></div>
+            </section>
+        </main>
+    </div>
+
+    <footer class="fixed bottom-0 inset-x-0 bg-[#000411]/80 backdrop-blur-lg border-t border-t-white/5 z-30 pb-safe">
+        <div class="max-w-md mx-auto grid grid-cols-4 h-16">
+            <a href="index.html" id="btn-nav-home" class="flex flex-col items-center justify-center gap-1 transition text-white/40">
+                <span class="text-base">📊</span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">監控首頁</span>
+            </a>
+            <a href="manage.html" id="btn-nav-manage" class="flex flex-col items-center justify-center gap-1 transition text-white">
+                <span class="text-base">📑</span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">明細查詢</span>
+            </a>
+            <a href="orders.html" id="btn-nav-orders" class="flex flex-col items-center justify-center gap-1 transition text-white/40 hidden">
+                <span class="relative inline-block">
+                    <span class="text-base">📋</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">團單核銷</span>
+            </a>
+            <a href="trips.html" id="btn-nav-trips" class="flex flex-col items-center justify-center gap-1 transition text-white/40">
+                <span class="relative inline-block">
+                    <span class="text-base">🧳</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">旅行規劃</span>
+            </a>
+            <a href="finance.html" id="btn-nav-finance" class="flex flex-col items-center justify-center gap-1 transition text-white/40 hidden">
+                <span class="relative inline-block">
+                    <span class="text-base">💰</span>
+                    <span class="badge-anchor absolute -top-1 -right-2"></span>
+                </span>
+                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">理財工具</span>
+            </a>
+        </div>
+    </footer>
+
+    <script src="shared.js"></script>
+    <script>
+        let payerChart = null;
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            const session = await bootstrapSubPage('manage');
+            if (!session) return;
+
+            const now = new Date();
+            document.getElementById("filter-start").value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+            document.getElementById("filter-end").value = now.toISOString().split('T')[0];
+
+            if (!session.isGroup) {
+                document.getElementById("filter-payment-box").classList.remove("hidden");
+                loadPaymentMethodOptions();
+            }
+            queryManagedData();
+        });
+
+        async function loadPaymentMethodOptions() {
+            const session = getSession();
+            try {
+                const methods = await apiFetch(`/api/payment-methods?owner_id=${encodeURIComponent(session.targetId)}`);
+                const select = document.getElementById("filter-payment");
+                select.innerHTML = `<option value="all">全部支付方式</option><option value="現金">現金</option>` +
+                    methods.map(m => `<option value="${escapeHtml(m.method_name)}">${escapeHtml(m.method_name)}</option>`).join("");
+            } catch (e) { console.error("支付方式清單讀取失敗：", e); }
+        }
+
+        window.queryManagedData = async function() {
+            const session = getSession();
+            const startVal = document.getElementById("filter-start").value;
+            const endVal = document.getElementById("filter-end").value;
+            const typeVal = document.getElementById("filter-type").value;
+            const paymentVal = session.isGroup ? "all" : document.getElementById("filter-payment").value;
+
+            const loadingTxt = document.getElementById("manage-loading-text");
+            const manageList = document.getElementById("manage-history-list");
+            const summaryCard = document.getElementById("filter-summary-card");
+
+            loadingTxt.classList.remove("hidden");
+            manageList.innerHTML = "";
+
+            try {
+                const ownerType = session.isGroup ? "group" : "user";
+
+                if (session.isGroup) {
+                    document.getElementById("group-payer-card").classList.remove("hidden");
+                    const payerRows = await apiFetch(`/api/groups/${encodeURIComponent(session.targetId)}/payer-summary`);
+                    let payerMap = {}; let totalExp = 0;
+                    payerRows.forEach(r => {
+                        const name = r.created_by_name || "未知成員";
+                        payerMap[name] = r.total;
+                        totalExp += r.total;
+                    });
+                    renderDoughnutChart('payerSettleChart', payerChart, payerMap, v => payerChart = v);
+                    let summaryHtml = `<div class="font-bold text-white/40 text-[10px] pb-1 font-mono">💰 歷史累計墊付排行：</div>`;
+                    Object.keys(payerMap).sort((a, b) => payerMap[b] - payerMap[a]).forEach(p => {
+                        summaryHtml += `<div class="flex justify-between py-1.5 font-mono"><span>🟢 ${p}</span><span class="font-bold">$${payerMap[p].toLocaleString()} (${totalExp > 0 ? ((payerMap[p] / totalExp) * 100).toFixed(1) : 0}%)</span></div>`;
+                    });
+                    document.getElementById("payer-summary-list").innerHTML = summaryHtml;
+                } else {
+                    document.getElementById("group-payer-card").classList.add("hidden");
+                }
+
+                let apiUrl = `/api/expenses?owner_type=${ownerType}&owner_id=${encodeURIComponent(session.targetId)}&start=${startVal}&end=${endVal}`;
+                if (typeVal !== "all") apiUrl += `&record_type=${typeVal}`;
+                if (paymentVal !== "all") apiUrl += `&payment_method=${encodeURIComponent(paymentVal)}`;
+                const rows = await apiFetch(apiUrl);
+
+                if (!session.isGroup && paymentVal !== "all") {
+                    const total = (rows || []).filter(r => (r.record_type || "expense") === "expense").reduce((s, r) => s + (r.amount || 0), 0);
+                    document.getElementById("filter-summary-label").textContent = `💳 ${paymentVal} 支付總和（篩選區間）`;
+                    document.getElementById("filter-summary-total").textContent = `$${total.toLocaleString()}`;
+                    summaryCard.classList.remove("hidden");
+                } else {
+                    summaryCard.classList.add("hidden");
+                }
+
+                loadingTxt.classList.add("hidden");
+
+                if (!rows || rows.length === 0) {
+                    manageList.innerHTML = catEmptyState("該區間查無任何收支紀錄", "py-12");
+                    return;
+                }
+
+                let listHtml = "";
+                rows.forEach((data) => {
+                    const id = data.id;
+                    const amt = data.amount || 0; const type = data.record_type || "expense";
+                    const item = data.item || "未命名"; const cat = data.category || "其他";
+                    const creatorName = data.created_by_name ? `[by ${data.created_by_name}]` : '';
+                    const dateObj = data.created_at ? new Date(data.created_at) : new Date();
+                    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+                    const isIncome = type === "income";
+                    listHtml += `
+                        <div class="flex justify-between items-center pt-4 text-sm first:pt-0 font-mono">
+                            <div class="flex flex-col">
+                                <span class="font-medium text-white/90">${escapeHtml(item)} <span class="text-[9px] text-white/30">${escapeHtml(creatorName)}</span></span>
+                                <span class="text-[10px] text-white/40 mt-0.5">${escapeHtml(cat)} · ${dateStr}${data.payment_method ? ' · ' + escapeHtml(data.payment_method) : ''}</span>
+                            </div>
+                            <div class="text-right flex items-center gap-2">
+                                <span class="font-bold font-mono ${isIncome ? 'text-white' : 'text-white/60'}">${isIncome ? '+' : '-'} $${amt.toLocaleString()}</span>
+                                <button onclick="window.editRecord(${id}, '${escapeHtml(item).replace(/'/g, "\\'")}', ${amt})" class="text-white/30 hover:text-white cursor-pointer">✎</button>
+                                <button onclick="window.deleteRecord(${id}, '${escapeHtml(item).replace(/'/g, "\\'")}')" class="text-rose-400/30 hover:text-rose-400 cursor-pointer">🗑️</button>
+                            </div>
+                        </div>`;
+                });
+                manageList.innerHTML = listHtml;
+            } catch (e) {
+                loadingTxt.classList.add("hidden");
+                manageList.innerHTML = `<div class="text-center py-12 text-rose-400/50 text-xs font-mono">讀取失敗：${e.message}</div>`;
+            }
+        }
+
+        window.editRecord = async function(id, currentItem, currentAmount) {
+            const newItem = prompt("請輸入修正後的項目名稱:", currentItem); if (!newItem) return;
+            const newAmountStr = prompt("請輸入修正後的金額:", currentAmount); if (!newAmountStr) return;
+            const newAmount = parseInt(newAmountStr, 10); if (isNaN(newAmount) || newAmount <= 0) { alert("金額錯誤"); return; }
+            try {
+                await apiFetch(`/api/expenses/${id}`, { method: "PATCH", body: JSON.stringify({ item: newItem.trim(), amount: newAmount }) });
+                queryManagedData();
+            } catch (e) { alert("修正失敗：" + e.message); }
+        }
+
+        window.deleteRecord = async function(id, itemTitle) {
+            if (confirm(`⚠️ 確定要刪除「${itemTitle}」這筆紀錄嗎？`)) {
+                try {
+                    await apiFetch(`/api/expenses/${id}`, { method: "DELETE" });
+                    queryManagedData();
+                } catch (e) { alert("刪除失敗：" + e.message); }
+            }
+        }
+    </script>
+</body>
+</html>
