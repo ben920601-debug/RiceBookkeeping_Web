@@ -279,8 +279,8 @@ function showGateOverlay(status, unlockKey) {
     overlay.innerHTML = `
         <div class="text-center space-y-3 max-w-xs w-full">
             <div class="text-4xl">🔒</div>
-            <h1 class="text-base font-bold tracking-widest">這是「${label}」</h1>
-            <p class="text-xs text-white/40">請輸入密碼才能進入（與中控台登入密碼相同）</p>
+            <h1 class="text-base font-bold tracking-widest">目前功能為「${label}」狀態</h1>
+            <p class="text-xs text-white/40">請輸入密碼進入開發與維護</p>
             <div class="flex gap-2 pt-2">
                 <input type="password" id="page-gate-password-input" placeholder="密碼" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
                 <button id="page-gate-submit-btn" class="bg-white text-[#0A1128] font-bold text-xs px-4 rounded-xl hover:bg-white/90 transition cursor-pointer">進入</button>
