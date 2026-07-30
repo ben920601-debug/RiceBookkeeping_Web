@@ -213,11 +213,24 @@
         let currentDisplayedNetBalance = 0;
 
         window.addEventListener('DOMContentLoaded', () => {
+            const existing = getSession();
+            if (existing.verified && existing.targetId) {
+                // ✅ 已經登入過（例如從其他頁面點「返回首頁」回來），直接沿用既有 session
+                // 顯示首頁，不用重新跑一次 LIFF 登入流程，避免每次回首頁都像重新登入。
+                document.getElementById("login-gateway").remove();
+                globalProfile = { displayName: existing.displayName, pictureUrl: existing.pictureUrl };
+                globalUserId = existing.isGroup ? null : existing.targetId;
+                applyModeUI(existing.mode, existing.targetId, existing.displayName, existing.pictureUrl);
+                checkDashboardSettings();
+                startSettingsPolling(applyAllNavBadges);
+                return;
+            }
+
+            // 🆕 沒有既有 session，走完整的 LIFF 登入流程
             // ⚠️ 這兩件事改成平行進行，不要讓 LIFF 登入流程等 dashboard-settings 這支 API
-            // 回應完才開始——之前是「等 API 回應→才開始 LIFF」，只要那支 API 慢一點或
-            // 第一次連線沒接好，LIFF 流程就永遠不會啟動，卡在驗證畫面要重整才會好。
-            // 維護模式如果真的被觸發，checkDashboardSettings 裡還是會把 maintenance-screen
-            // 蓋在最上層（z-index 最高），不影響「維護中要擋下」這件事本身。
+            // 回應完才開始——只要那支 API 慢一點或第一次連線沒接好，LIFF 流程就永遠不會
+            // 啟動，卡在驗證畫面要重整才會好。維護模式如果真的被觸發，checkDashboardSettings
+            // 裡還是會把 maintenance-screen 蓋在最上層（z-index 最高），不影響擋下的效果。
             setTimeout(initLIFFSafeFlow, 300);
             checkDashboardSettings();
             startSettingsPolling(applyAllNavBadges);
@@ -272,6 +285,35 @@
             }
         }
 
+        function applyModeUI(mode, targetId, displayName, pictureUrl) {
+            isGroupModeSelected = (mode === 'group');
+            finalTargetId = targetId;
+
+            if (isGroupModeSelected) {
+                document.getElementById("mode-badge").innerText = "👥 群組";
+                document.getElementById("mode-badge").className = "text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-medium tracking-wider";
+                document.getElementById("balance-title").innerText = "本月群組總開銷金額";
+                document.getElementById("history-title").innerText = "📑 本月群組即時明細";
+                document.getElementById("user-name").innerText = `${displayName || '群組成員'} (成員)`;
+                document.getElementById("balance-correction-btn").classList.add("hidden");
+            } else {
+                document.getElementById("mode-badge").innerText = "👤 個人";
+                document.getElementById("mode-badge").className = "text-[9px] bg-white/10 text-white/70 px-2 py-0.5 rounded-full font-medium tracking-wider";
+                document.getElementById("user-name").innerText = displayName || "個人帳本主";
+                document.getElementById("balance-title").innerText = "本月收支總和";
+                document.getElementById("history-title").innerText = "📑 當日即時明細";
+                document.getElementById("balance-correction-btn").classList.remove("hidden");
+            }
+
+            if (pictureUrl) {
+                document.getElementById("user-avatar").style.backgroundImage = `url('${pictureUrl}')`;
+            }
+
+            applyNavModeVisibility();
+            applyAllNavBadges();
+            startPolling();
+        }
+
         window.finalizeEntry = function() {
             const inputGroupVal = document.getElementById("input-group-id").value.trim();
             const url = new URL(window.location.href);
@@ -280,25 +322,12 @@
                 if (!inputGroupVal) { alert("⚠️ 請確認或輸入群組 ID 代碼！"); return; }
                 finalTargetId = inputGroupVal;
 
-                document.getElementById("mode-badge").innerText = "👥 群組";
-                document.getElementById("mode-badge").className = "text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-medium tracking-wider";
-                document.getElementById("balance-title").innerText = "本月群組總開銷金額";
-                document.getElementById("history-title").innerText = "📑 本月群組即時明細";
-                document.getElementById("user-name").innerText = `${globalProfile.displayName || '群組成員'} (成員)`;
-                document.getElementById("balance-correction-btn").classList.add("hidden");
-
                 url.searchParams.set('groupId', finalTargetId);
                 url.searchParams.delete('userId');
                 window.history.replaceState({}, '', url.toString());
                 saveSession('group', finalTargetId, globalProfile.displayName, globalProfile.pictureUrl);
             } else {
                 finalTargetId = globalUserId;
-                document.getElementById("mode-badge").innerText = "👤 個人";
-                document.getElementById("mode-badge").className = "text-[9px] bg-white/10 text-white/70 px-2 py-0.5 rounded-full font-medium tracking-wider";
-                document.getElementById("user-name").innerText = globalProfile.displayName || "個人帳本主";
-                document.getElementById("balance-title").innerText = "本月收支總和";
-                document.getElementById("history-title").innerText = "📑 當日即時明細";
-                document.getElementById("balance-correction-btn").classList.remove("hidden");
 
                 url.searchParams.delete('groupId');
                 url.searchParams.set('userId', finalTargetId);
@@ -306,15 +335,8 @@
                 saveSession('user', finalTargetId, globalProfile.displayName, globalProfile.pictureUrl);
             }
 
-            if (globalProfile.pictureUrl) {
-                document.getElementById("user-avatar").style.backgroundImage = `url('${globalProfile.pictureUrl}')`;
-            }
-
             document.getElementById("confirm-gateway").remove();
-
-            applyNavModeVisibility();
-            applyAllNavBadges();
-            startPolling();
+            applyModeUI(isGroupModeSelected ? 'group' : 'user', finalTargetId, globalProfile.displayName, globalProfile.pictureUrl);
         }
 
         // ==========================================
