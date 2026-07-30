@@ -212,7 +212,7 @@
         let homePollTimer = null;
         let currentDisplayedNetBalance = 0;
 
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             const existing = getSession();
             if (existing.verified && existing.targetId) {
                 // ✅ 已經登入過（例如從其他頁面點「返回首頁」回來），直接沿用既有 session
@@ -220,8 +220,16 @@
                 document.getElementById("login-gateway").remove();
                 globalProfile = { displayName: existing.displayName, pictureUrl: existing.pictureUrl };
                 globalUserId = existing.isGroup ? null : existing.targetId;
-                applyModeUI(existing.mode, existing.targetId, existing.displayName, existing.pictureUrl);
-                checkDashboardSettings();
+
+                // 🐛 修正：一定要先等這支 API 把功能狀態（globalFeatureStatuses）準備好，
+                // 才能呼叫 applyModeUI 裡面的 applyAllNavBadges 去畫導覽列——
+                // 之前是「先畫導覽列、API才慢慢回來」，導覽列畫的當下系統根本還不知道
+                // 哪個功能被設成「不開放」，就會把它當一般圖示錯誤地顯示出來。
+                // apiFetch 已經有 10 秒逾時保護，這裡 await 不會有卡住整頁的風險。
+                const ok = await checkDashboardSettings();
+                if (ok) {
+                    applyModeUI(existing.mode, existing.targetId, existing.displayName, existing.pictureUrl);
+                }
                 startSettingsPolling(applyAllNavBadges);
                 return;
             }
