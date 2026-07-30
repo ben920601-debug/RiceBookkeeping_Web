@@ -36,7 +36,7 @@
             <div class="pt-5 mt-2 border-t border-white/10 space-y-2">
                 <p class="text-[10px] text-white/30 tracking-wider">維護／測試人員可輸入密碼提前進入</p>
                 <div class="flex gap-2">
-                    <input type="password" id="maintenance-password-input" placeholder="密碼" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
+                    <input type="password" id="maintenance-password-input" placeholder="密碼" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none" />
                     <button onclick="window.submitMaintenanceBypass()" class="bg-white text-[#0A1128] font-bold text-xs px-4 rounded-xl hover:bg-white/90 transition cursor-pointer">進入</button>
                 </div>
                 <p id="maintenance-password-error" class="text-[10px] text-rose-400 hidden">❌ 密碼錯誤</p>
@@ -66,17 +66,17 @@
                 <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase">💳 新增繳費項目</h3>
                 <p class="text-[10px] text-white/40">到期日前 2 天會主動提醒您；LINE 對話中輸入「帳單名稱 金額」即可核銷。</p>
                 <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="bill-new-name" placeholder="帳單名稱" class="bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-                    <input type="number" id="bill-new-amount" placeholder="金額" class="bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    <input type="text" id="bill-new-name" placeholder="帳單名稱" class="bg-[#0A1128] border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none">
+                    <input type="number" id="bill-new-amount" placeholder="金額" class="bg-[#0A1128] border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">到期日</label>
-                        <input type="date" id="bill-new-due" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                        <input type="date" id="bill-new-due" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none">
                     </div>
                     <div>
                         <label class="text-[10px] text-white/40 block tracking-wider uppercase mb-1">分期期數（選填）</label>
-                        <input type="number" id="bill-new-installments" placeholder="不填=每月持續" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                        <input type="number" id="bill-new-installments" placeholder="不填=每月持續" class="w-full bg-[#0A1128] border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none">
                     </div>
                 </div>
                 <button onclick="window.createBill()" class="w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase">
@@ -94,8 +94,8 @@
             <section class="bg-[#1C2541] rounded-2xl p-5 shadow-xl border border-white/5 space-y-3">
                 <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase">🐷 新增存錢筒（最多 6 個）</h3>
                 <div class="grid grid-cols-2 gap-3">
-                    <input type="text" id="jar-new-name" placeholder="存錢筒名稱" class="bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-                    <input type="number" id="jar-new-target" placeholder="目標金額（選填）" class="bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    <input type="text" id="jar-new-name" placeholder="存錢筒名稱" class="bg-[#0A1128] border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none">
+                    <input type="number" id="jar-new-target" placeholder="目標金額（選填）" class="bg-[#0A1128] border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none">
                 </div>
                 <button onclick="window.createJar()" class="w-full bg-white text-[#0A1128] font-bold text-xs tracking-widest py-3 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase">
                     🐷 建立存錢筒
@@ -114,7 +114,7 @@
                 <h3 class="text-[11px] font-bold text-white/50 tracking-widest uppercase">💰 常用支付方式</h3>
                 <p class="text-[10px] text-white/40">登記後，LINE 對話輸入「項目 金額 支付方式」（例如：早餐 60 LINE PAY）就會自動歸類；沒登記過的名稱不會被辨識，一律歸為現金。</p>
                 <div class="form-row" style="display:flex;gap:8px;">
-                    <input type="text" id="payment-method-new-name" placeholder="支付方式名稱，例如：LINE PAY" class="flex-1 bg-[#0A1128] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                    <input type="text" id="payment-method-new-name" placeholder="支付方式名稱，例如：LINE PAY" class="flex-1 bg-[#0A1128] border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none">
                     <button onclick="window.createPaymentMethod()" class="bg-white text-[#0A1128] font-bold text-xs tracking-widest px-4 rounded-xl hover:bg-white/90 transition shadow-md cursor-pointer uppercase whitespace-nowrap">
                         ＋ 新增
                     </button>
