@@ -220,15 +220,26 @@ function applyFeatureBadge(btnId, featureKey) {
     }
 }
 
-function applyAllNavBadges() {
-    applyFeatureBadge("btn-nav-orders", "orders_dashboard");
-    applyFeatureBadge("btn-nav-trips", "trips_dashboard");
-    applyFeatureBadge("btn-nav-finance", "finance_dashboard");
-
-    // 判斷都做完了，才把整條導覽列一次顯示出來，避免使用者看到「全部顯示→突然藏起來/冒出來」的閃爍
+function revealNavFooter() {
     const footer = document.getElementById("nav-footer");
     if (footer) footer.classList.remove("invisible");
 }
+
+function applyAllNavBadges() {
+    try {
+        applyFeatureBadge("btn-nav-orders", "orders_dashboard");
+        applyFeatureBadge("btn-nav-trips", "trips_dashboard");
+        applyFeatureBadge("btn-nav-finance", "finance_dashboard");
+    } catch (e) {
+        console.error('導覽列標籤套用失敗（不影響導覽列本身顯示）：', e);
+    }
+    // 判斷都做完了，才把整條導覽列一次顯示出來，避免使用者看到「全部顯示→突然藏起來/冒出來」的閃爍
+    revealNavFooter();
+}
+
+// 🛟 保險機制：不管上面判斷邏輯有沒有正常執行到，最多 1.5 秒後一定強制顯示導覽列，
+// 避免任何一個環節出錯就讓整條導覽列永久消失、使用者完全點不到任何東西。
+setTimeout(revealNavFooter, 1500);
 
 function applyNavModeVisibility() {
     const session = getSession();
