@@ -224,6 +224,10 @@ function applyAllNavBadges() {
     applyFeatureBadge("btn-nav-orders", "orders_dashboard");
     applyFeatureBadge("btn-nav-trips", "trips_dashboard");
     applyFeatureBadge("btn-nav-finance", "finance_dashboard");
+
+    // 判斷都做完了，才把整條導覽列一次顯示出來，避免使用者看到「全部顯示→突然藏起來/冒出來」的閃爍
+    const footer = document.getElementById("nav-footer");
+    if (footer) footer.classList.remove("invisible");
 }
 
 function applyNavModeVisibility() {
