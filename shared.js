@@ -12,10 +12,21 @@ const MY_LIFF_ID = "2010446205-W1G1WDQQ";
 const POLL_INTERVAL_MS = 5000;
 
 async function apiFetch(path, options = {}) {
-    const res = await fetch(`${API_BASE_URL}${path}`, {
-        headers: { "Content-Type": "application/json" },
-        ...options
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒逾時保護，避免request卡住讓整頁永遠沒反應
+    let res;
+    try {
+        res = await fetch(`${API_BASE_URL}${path}`, {
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            ...options
+        });
+    } catch (e) {
+        if (e.name === 'AbortError') throw new Error('連線逾時，請稍後再試');
+        throw e;
+    } finally {
+        clearTimeout(timeoutId);
+    }
     if (!res.ok) {
         let detail = "";
         try { detail = (await res.json()).detail || ""; } catch (e) {}
