@@ -191,7 +191,7 @@ window.submitMaintenanceBypass = async function() {
 // ==========================================
 // 🚦 導覽列圖示：Beta／維護中／不開放 標籤與可見性
 // ==========================================
-const FEATURE_KEY_MAP = { manage: null, orders: 'orders_dashboard', trips: 'trips_dashboard', finance: 'finance_dashboard' };
+const FEATURE_KEY_MAP = { manage: null, orders: 'orders_dashboard', trips: 'trips_dashboard', bills: 'bills_dashboard', finance: 'finance_dashboard' };
 
 function applyFeatureBadge(btnId, featureKey) {
     const status = globalFeatureStatuses[featureKey];
@@ -205,7 +205,7 @@ function applyFeatureBadge(btnId, featureKey) {
     if (btn) {
         const pageKey = Object.keys(FEATURE_KEY_MAP).find(k => FEATURE_KEY_MAP[k] === featureKey);
         const session = getSession();
-        const modeHidden = (pageKey === 'orders' && !session.isGroup) || (pageKey === 'finance' && session.isGroup);
+        const modeHidden = (pageKey === 'orders' && !session.isGroup) || ((pageKey === 'finance' || pageKey === 'bills') && session.isGroup);
         if (!modeHidden) btn.classList.remove('hidden');
     }
 
@@ -229,6 +229,7 @@ function applyAllNavBadges() {
     try {
         applyFeatureBadge("btn-nav-orders", "orders_dashboard");
         applyFeatureBadge("btn-nav-trips", "trips_dashboard");
+        applyFeatureBadge("btn-nav-bills", "bills_dashboard");
         applyFeatureBadge("btn-nav-finance", "finance_dashboard");
     } catch (e) {
         console.error('導覽列標籤套用失敗（不影響導覽列本身顯示）：', e);
@@ -245,8 +246,10 @@ function applyNavModeVisibility() {
     const session = getSession();
     const btnOrders = document.getElementById("btn-nav-orders");
     const btnFinance = document.getElementById("btn-nav-finance");
+    const btnBills = document.getElementById("btn-nav-bills");
     if (btnOrders) btnOrders.classList.toggle("hidden", !session.isGroup);
     if (btnFinance) btnFinance.classList.toggle("hidden", session.isGroup);
+    if (btnBills) btnBills.classList.toggle("hidden", session.isGroup);
 }
 
 // ==========================================
@@ -279,10 +282,10 @@ function showGateOverlay(status, unlockKey) {
     overlay.innerHTML = `
         <div class="text-center space-y-3 max-w-xs w-full">
             <div class="text-4xl">🔒</div>
-            <h1 class="text-base font-bold tracking-widest">目前功能為「${label}」狀態</h1>
-            <p class="text-xs text-white/40">請輸入密碼進入開發與維護</p>
+            <h1 class="text-base font-bold tracking-widest">這是「${label}」</h1>
+            <p class="text-xs text-white/40">請輸入密碼才能進入（與中控台登入密碼相同）</p>
             <div class="flex gap-2 pt-2">
-                <input type="password" id="page-gate-password-input" placeholder="密碼" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none" />
+                <input type="password" id="page-gate-password-input" placeholder="密碼" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
                 <button id="page-gate-submit-btn" class="bg-white text-[#0A1128] font-bold text-xs px-4 rounded-xl hover:bg-white/90 transition cursor-pointer">進入</button>
             </div>
             <p id="page-gate-error" class="text-[10px] text-rose-400 hidden">❌ 密碼錯誤</p>

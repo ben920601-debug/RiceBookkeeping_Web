@@ -36,7 +36,7 @@
             <div class="pt-5 mt-2 border-t border-white/10 space-y-2">
                 <p class="text-[10px] text-white/30 tracking-wider">維護／測試人員可輸入密碼提前進入</p>
                 <div class="flex gap-2">
-                    <input type="password" id="maintenance-password-input" placeholder="密碼" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none" />
+                    <input type="password" id="maintenance-password-input" placeholder="密碼" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
                     <button onclick="window.submitMaintenanceBypass()" class="bg-white text-[#0A1128] font-bold text-xs px-4 rounded-xl hover:bg-white/90 transition cursor-pointer">進入</button>
                 </div>
                 <p id="maintenance-password-error" class="text-[10px] text-rose-400 hidden">❌ 密碼錯誤</p>
@@ -78,36 +78,45 @@
     </div>
 
     <footer id="nav-footer" class="fixed bottom-0 inset-x-0 bg-[#000411]/80 backdrop-blur-lg border-t border-t-white/5 z-30 pb-safe invisible">
-        <div class="max-w-md mx-auto flex h-16">
-            <a href="index.html" id="btn-nav-home" class="flex-1 flex flex-col items-center justify-center gap-1 transition text-white/40">
-                <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span>
-                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">監控首頁</span>
-            </a>
-            <a href="manage.html" id="btn-nav-manage" class="flex-1 flex flex-col items-center justify-center gap-1 transition text-white/40">
-                <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></span>
-                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">明細查詢</span>
-            </a>
-            <a href="orders.html" id="btn-nav-orders" class="flex-1 flex flex-col items-center justify-center gap-1 transition text-white hidden">
-                <span class="relative inline-block">
-                    <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 14l2 2 4-4"></path></svg></span>
-                    <span class="badge-anchor absolute -top-1 -right-2"></span>
-                </span>
-                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">團單核銷</span>
-            </a>
-            <a href="trips.html" id="btn-nav-trips" class="flex-1 flex flex-col items-center justify-center gap-1 transition text-white/40">
-                <span class="relative inline-block">
-                    <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"></path></svg></span>
-                    <span class="badge-anchor absolute -top-1 -right-2"></span>
-                </span>
-                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">旅行規劃</span>
-            </a>
-            <a href="finance.html" id="btn-nav-finance" class="flex-1 flex flex-col items-center justify-center gap-1 transition text-white/40 hidden">
-                <span class="relative inline-block">
-                    <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M21 12V7H5a2 2 0 010-4h14v4"></path><path d="M3 5v14a2 2 0 002 2h16v-5"></path><circle cx="18" cy="12" r="1"></circle></svg></span>
-                    <span class="badge-anchor absolute -top-1 -right-2"></span>
-                </span>
-                <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">理財工具</span>
-            </a>
+        <div class="max-w-md mx-auto overflow-x-auto no-scrollbar">
+            <div class="flex h-16 min-w-max">
+                <a href="index.html" id="btn-nav-home" class="w-16 flex-shrink-0 flex flex-col items-center justify-center gap-1 transition text-white/40">
+                    <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span>
+                    <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">監控首頁</span>
+                </a>
+                <a href="manage.html" id="btn-nav-manage" class="w-16 flex-shrink-0 flex flex-col items-center justify-center gap-1 transition text-white/40">
+                    <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></span>
+                    <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">明細查詢</span>
+                </a>
+                <a href="orders.html" id="btn-nav-orders" class="w-16 flex-shrink-0 flex flex-col items-center justify-center gap-1 transition text-white hidden">
+                    <span class="relative inline-block">
+                        <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 14l2 2 4-4"></path></svg></span>
+                        <span class="badge-anchor absolute -top-1 -right-2"></span>
+                    </span>
+                    <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">團單核銷</span>
+                </a>
+                <a href="trips.html" id="btn-nav-trips" class="w-16 flex-shrink-0 flex flex-col items-center justify-center gap-1 transition text-white/40">
+                    <span class="relative inline-block">
+                        <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"></path></svg></span>
+                        <span class="badge-anchor absolute -top-1 -right-2"></span>
+                    </span>
+                    <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">旅行規劃</span>
+                </a>
+                <a href="bills.html" id="btn-nav-bills" class="w-16 flex-shrink-0 flex flex-col items-center justify-center gap-1 transition text-white/40 hidden">
+                    <span class="relative inline-block">
+                        <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M4 3h16v18l-3-2-3 2-3-2-3 2-3-2-1 2z"></path><line x1="8" y1="8" x2="16" y2="8"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg></span>
+                        <span class="badge-anchor absolute -top-1 -right-2"></span>
+                    </span>
+                    <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">繳費</span>
+                </a>
+                <a href="finance.html" id="btn-nav-finance" class="w-16 flex-shrink-0 flex flex-col items-center justify-center gap-1 transition text-white/40 hidden">
+                    <span class="relative inline-block">
+                        <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M21 12V7H5a2 2 0 010-4h14v4"></path><path d="M3 5v14a2 2 0 002 2h16v-5"></path><circle cx="18" cy="12" r="1"></circle></svg></span>
+                        <span class="badge-anchor absolute -top-1 -right-2"></span>
+                    </span>
+                    <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">理財工具</span>
+                </a>
+            </div>
         </div>
     </footer>
 
