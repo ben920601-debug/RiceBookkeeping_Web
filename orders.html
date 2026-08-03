@@ -79,7 +79,7 @@
 
     <footer id="nav-footer" class="fixed bottom-0 inset-x-0 bg-[#000411]/80 backdrop-blur-lg border-t border-t-white/5 z-30 pb-safe invisible">
         <div class="max-w-md mx-auto overflow-x-auto no-scrollbar">
-            <div class="flex h-16 min-w-max">
+            <div class="flex h-16 min-w-max justify-evenly">
                 <a href="index.html" id="btn-nav-home" class="w-16 flex-shrink-0 flex flex-col items-center justify-center gap-1 transition text-white/40">
                     <span class="w-5 h-5 inline-flex items-center justify-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span>
                     <span class="nav-label text-[10px] font-medium tracking-wider whitespace-nowrap">監控首頁</span>
@@ -138,7 +138,7 @@
                 const orders = await apiFetch(`/api/groups/${encodeURIComponent(session.targetId)}/orders`);
 
                 let masterHtml = "";
-                orders.forEach((o) => {
+                for (const o of orders) {
                     const orderId = o.id; const code = o.order_code; const orderName = o.order_name;
                     const date = o.order_date; const total = o.total_amount || 0;
                     const items = o.items || [];
@@ -171,6 +171,23 @@
                             </div>`;
                     });
 
+                    let settlementsHtml = "";
+                    try {
+                        const settlements = await apiFetch(`/api/groups/${encodeURIComponent(session.targetId)}/orders/${orderId}/settlements`);
+                        settlements.forEach(s => {
+                            settlementsHtml += `
+                                <div class="flex justify-between items-center bg-[#0A1128]/50 p-2 rounded-xl text-xs font-mono">
+                                    <span class="text-white/60">${escapeHtml(s.payer_name)} → ${escapeHtml(s.receiver_name)}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-mono font-bold text-emerald-400">$${s.amount}</span>
+                                        <button onclick="window.editSettlement(${s.id}, '${s.payer_id}', '${escapeHtml(s.payer_name).replace(/'/g, "\\'")}', '${s.receiver_id}', '${escapeHtml(s.receiver_name).replace(/'/g, "\\'")}', ${s.amount})" class="text-white/30 hover:text-white cursor-pointer">✎</button>
+                                        <button onclick="window.deleteSettlement(${s.id})" class="text-rose-400/30 hover:text-rose-400 cursor-pointer">🗑️</button>
+                                    </div>
+                                </div>`;
+                        });
+                    } catch (e) { console.error("核銷紀錄讀取失敗：", e); }
+                    if (!settlementsHtml) settlementsHtml = `<div class="text-white/20 text-center py-2 text-[10px]">尚無核銷紀錄</div>`;
+
                     masterHtml += `
                         <div class="bg-[#1C2541] border border-white/5 rounded-2xl p-4 space-y-3 shadow-lg">
                             <div class="flex justify-between items-start border-b border-white/5 pb-2.5 font-mono">
@@ -199,8 +216,15 @@
                                 <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold pb-1">📊 成員收欠款實時對帳：</div>
                                 ${subRowsHtml}
                             </div>
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between items-center">
+                                    <div class="text-[10px] text-white/30 tracking-wider uppercase font-bold font-mono">💸 核銷紀錄：</div>
+                                    <button onclick="window.addSettlement(${orderId})" class="text-[10px] text-emerald-400/70 hover:text-emerald-400 cursor-pointer">＋ 補登核銷</button>
+                                </div>
+                                ${settlementsHtml}
+                            </div>
                         </div>`;
-                });
+                }
 
                 document.getElementById("order-loading-text").classList.add("hidden");
                 document.getElementById("order-master-list").innerHTML = masterHtml ? masterHtml : catEmptyState("本群組尚無任何揪團訂單", "py-6");
@@ -267,6 +291,55 @@
             if (confirm(`⚠️ 確定要刪除整張團單 #${code} 嗎？此動作無法復原。`)) {
                 try {
                     await apiFetch(`/api/groups/${encodeURIComponent(session.targetId)}/orders/${orderId}`, { method: "DELETE" });
+                    loadOrdersDashboard();
+                } catch (e) { alert("刪除失敗：" + e.message); }
+            }
+        }
+
+        window.addSettlement = async function(orderId) {
+            const session = getSession();
+            const payer = await pickGroupMember("這筆核銷是誰付款？");
+            if (!payer) return;
+            const receiver = await pickGroupMember("這筆核銷是付給誰？");
+            if (!receiver) return;
+            const amountStr = prompt("金額：", ""); if (!amountStr) return;
+            const amount = parseInt(amountStr, 10); if (isNaN(amount) || amount <= 0) return alert("金額格式錯誤");
+            try {
+                await apiFetch(`/api/groups/${encodeURIComponent(session.targetId)}/orders/${orderId}/settlements`, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        payer_id: payer.user_id, payer_name: payer.display_name,
+                        receiver_id: receiver.user_id, receiver_name: receiver.display_name, amount
+                    })
+                });
+                loadOrdersDashboard();
+            } catch (e) { alert("補登失敗：" + e.message); }
+        }
+
+        window.editSettlement = async function(settlementId, currentPayerId, currentPayerName, currentReceiverId, currentReceiverName, currentAmount) {
+            const payer = await pickGroupMember(`修改付款人（目前：${currentPayerName}）`);
+            const payerId = payer ? payer.user_id : currentPayerId;
+            const payerName = payer ? payer.display_name : currentPayerName;
+
+            const receiver = await pickGroupMember(`修改收款人（目前：${currentReceiverName}）`);
+            const receiverId = receiver ? receiver.user_id : currentReceiverId;
+            const receiverName = receiver ? receiver.display_name : currentReceiverName;
+
+            const amountStr = prompt("金額：", currentAmount); if (!amountStr) return;
+            const amount = parseInt(amountStr, 10); if (isNaN(amount) || amount <= 0) return alert("金額格式錯誤");
+            try {
+                await apiFetch(`/api/settlements/${settlementId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ payer_id: payerId, payer_name: payerName, receiver_id: receiverId, receiver_name: receiverName, amount })
+                });
+                loadOrdersDashboard();
+            } catch (e) { alert("修改失敗：" + e.message); }
+        }
+
+        window.deleteSettlement = async function(settlementId) {
+            if (confirm("⚠️ 確定要刪除這筆核銷紀錄嗎？刪除後對應的應付/已付金額會重新計算。")) {
+                try {
+                    await apiFetch(`/api/settlements/${settlementId}`, { method: "DELETE" });
                     loadOrdersDashboard();
                 } catch (e) { alert("刪除失敗：" + e.message); }
             }
